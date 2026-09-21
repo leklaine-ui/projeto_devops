@@ -3,3 +3,5 @@ __pycache__/
 *.pyc
 Untitled.ipynb
 *.ipynb
+dados/*.db
+.pytest_cache/

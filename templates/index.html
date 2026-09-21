@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Projeto DevOps</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+        }
+
+        input {
+            padding: 10px;
+            width: 250px;
+        }
+
+        button {
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Aplicação DevOps</h1>
+
+    <input
+        id="mensagem"
+        type="text"
+        placeholder="Digite uma mensagem"
+    >
+
+    <button onclick="enviarMensagem()">
+        Enviar
+    </button>
+
+    <h2>Histórico de mensagens</h2>
+
+    <ul id="historico">
+    </ul>
+
+    <script>
+
+        function carregarMensagens() {
+
+            fetch("/api/mensagens")
+
+                .then(resposta => resposta.json())
+
+                .then(mensagens => {
+
+                    const lista =
+                        document.getElementById("historico");
+
+                    lista.innerHTML = "";
+
+                    mensagens.forEach(item => {
+
+                        const linha =
+                            document.createElement("li");
+
+                        linha.innerText =
+                            item.id + " - " + item.mensagem;
+
+                        lista.appendChild(linha);
+
+                    });
+
+                });
+        }
+
+
+        function enviarMensagem() {
+
+            const campo =
+                document.getElementById("mensagem");
+
+            const mensagem =
+                campo.value.trim();
+
+            if (mensagem === "") {
+                return;
+            }
+
+            fetch("/api/mensagem", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    mensagem: mensagem
+                })
+
+            })
+
+            .then(resposta => resposta.json())
+
+            .then(dados => {
+
+                campo.value = "";
+
+                carregarMensagens();
+
+            });
+        }
+
+
+        carregarMensagens();
+
+    </script>
+
+</body>
+
+</html>
