@@ -98,3 +98,30 @@ def test_mensagem_vazia():
 
     assert dados["status"] == "erro"
     assert dados["salva_no_banco"] is False
+
+def test_mensagem_gravada_no_banco():
+    cliente = app.test_client()
+
+    mensagem = "Teste de persistencia SQLite"
+
+    resposta = cliente.post(
+        "/api/mensagem",
+        json={
+            "mensagem": mensagem
+        }
+    )
+
+    assert resposta.status_code == 200
+
+    resposta = cliente.get("/api/mensagens")
+
+    assert resposta.status_code == 200
+
+    dados = resposta.get_json()
+
+    mensagens = [
+        item["mensagem"]
+        for item in dados
+    ]
+
+    assert mensagem in mensagens
