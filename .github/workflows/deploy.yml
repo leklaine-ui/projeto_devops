@@ -22,4 +22,8 @@ jobs:
         run: docker pull ghcr.io/${{ github.repository_owner }}/projeto_devops:latest
 
       - name: Executar aplicação
-        run: docker run --rm ghcr.io/${{ github.repository_owner }}/projeto_devops:latest
+        run: |
+          docker run -d --name projeto_devops_container -p 5000:5000 ghcr.io/${{ github.repository_owner }}/projeto_devops:latest
+          sleep 5
+          curl --fail http://localhost:5000/health
+          docker stop projeto_devops_container
