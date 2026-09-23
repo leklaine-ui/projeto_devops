@@ -17,7 +17,7 @@ def salvar_mensagem(usuario, texto):
     cursor = conexao.cursor()
 
     cursor.execute(
-        "INSERT INTO mensagens (usuario, mensagem) VALUES (?, ?)",
+        "INSERT INTO mensagens (usuario, mensagem, data_hora) VALUES (?, ?, datetime('now'))",
         (usuario, texto)
     )
 
@@ -87,7 +87,7 @@ def listar_mensagens():
     cursor = conexao.cursor()
 
     cursor.execute("""
-        SELECT id, usuario, mensagem
+        SELECT id, usuario, mensagem, data_hora
         FROM mensagens
         ORDER BY id DESC
     """)
@@ -98,11 +98,12 @@ def listar_mensagens():
 
     resultado = []
 
-    for id_mensagem, usuario, texto in mensagens:
+    for id_mensagem, usuario, texto, data_hora in mensagens:
         resultado.append({
             "id": id_mensagem,
             "usuario": usuario,
-            "mensagem": texto
+            "mensagem": texto,
+            "data_hora": data_hora
         })
 
     return jsonify(resultado)

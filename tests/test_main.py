@@ -91,6 +91,8 @@ def test_listar_mensagens():
 
     assert "Lek" in usuarios
 
+    assert all("data_hora" in item for item in dados)
+
 
 def test_mensagem_vazia():
     cliente = app.test_client()

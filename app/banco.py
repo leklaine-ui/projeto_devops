@@ -19,7 +19,8 @@ def criar_banco():
         CREATE TABLE IF NOT EXISTS mensagens (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             usuario TEXT NOT NULL DEFAULT "anonimo",
-            mensagem TEXT NOT NULL
+            mensagem TEXT NOT NULL,
+            data_hora TEXT NOT NULL DEFAULT ""
         )
     """)
 
@@ -28,6 +29,10 @@ def criar_banco():
 
     if "usuario" not in colunas:
         cursor.execute("ALTER TABLE mensagens ADD COLUMN usuario TEXT NOT NULL DEFAULT 'anonimo'")
+
+    if "data_hora" not in colunas:
+        cursor.execute("ALTER TABLE mensagens ADD COLUMN data_hora TEXT NOT NULL DEFAULT ''")
+        cursor.execute("UPDATE mensagens SET data_hora = datetime('now') WHERE data_hora = ''")
 
     conexao.commit()
     conexao.close()
