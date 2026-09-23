@@ -75,8 +75,21 @@
                         const linha =
                             document.createElement("li");
 
-                        linha.innerText =
-                            item.id + " - " + item.usuario + ": " + item.mensagem + " — " + item.data_hora;
+                        const usuario = document.createElement("strong");
+                        usuario.textContent = item.usuario;
+
+                        const mensagem = document.createElement("span");
+                        mensagem.textContent = " — " + item.mensagem;
+
+                        const dataHora = document.createElement("small");
+                        dataHora.textContent = item.data_hora;
+                        dataHora.style.display = "block";
+                        dataHora.style.marginTop = "6px";
+
+                        linha.textContent = item.id + " - ";
+                        linha.appendChild(usuario);
+                        linha.appendChild(mensagem);
+                        linha.appendChild(dataHora);
 
                         lista.appendChild(linha);
 
