@@ -25,7 +25,23 @@
         }
 
         li {
-            margin-bottom: 8px;
+            list-style: none;
+            margin-bottom: 12px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f8f8f8;
+        }
+
+        .usuario {
+            font-weight: bold;
+        }
+
+        .data-hora {
+            display: block;
+            margin-top: 6px;
+            font-size: 12px;
+            color: #666;
         }
     </style>
 </head>
@@ -75,8 +91,10 @@
                         const linha =
                             document.createElement("li");
 
-                        linha.innerText =
-                            item.id + " - " + item.usuario + ": " + item.mensagem + " — " + item.data_hora;
+                        linha.innerHTML =
+                            '<span class="usuario">' + item.usuario + '</span><br>' +
+                            item.mensagem +
+                            '<span class="data-hora">' + item.data_hora + '</span>';
 
                         lista.appendChild(linha);
 
