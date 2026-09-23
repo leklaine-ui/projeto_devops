@@ -43,6 +43,7 @@ def test_enviar_mensagem():
     resposta = cliente.post(
         "/api/mensagem",
         json={
+            "usuario": "Lek",
             "mensagem": "Teste automatizado"
         }
     )
@@ -51,6 +52,7 @@ def test_enviar_mensagem():
 
     dados = resposta.get_json()
 
+    assert dados["usuario"] == "Lek"
     assert dados["mensagem_recebida"] == "Teste automatizado"
     assert dados["status"] == "recebida"
     assert dados["salva_no_banco"] is True
@@ -62,6 +64,7 @@ def test_listar_mensagens():
     cliente.post(
         "/api/mensagem",
         json={
+            "usuario": "Lek",
             "mensagem": "Mensagem para testar o histórico"
         }
     )
@@ -80,6 +83,13 @@ def test_listar_mensagens():
     ]
 
     assert "Mensagem para testar o histórico" in mensagens
+
+    usuarios = [
+        item["usuario"]
+        for item in dados
+    ]
+
+    assert "Lek" in usuarios
 
 
 def test_mensagem_vazia():

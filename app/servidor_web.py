@@ -11,14 +11,14 @@ app = Flask(__name__, template_folder="../templates")
 criar_banco()
 
 
-def salvar_mensagem(texto):
+def salvar_mensagem(usuario, texto):
     conexao = sqlite3.connect(BANCO)
 
     cursor = conexao.cursor()
 
     cursor.execute(
-        "INSERT INTO mensagens (mensagem) VALUES (?)",
-        (texto,)
+        "INSERT INTO mensagens (usuario, mensagem) VALUES (?, ?)",
+        (usuario, texto)
     )
 
     conexao.commit()
@@ -60,6 +60,7 @@ def mensagem():
             "salva_no_banco": False
         }), 400
 
+    usuario = dados.get("usuario", "anonimo")
     texto = dados.get("mensagem")
 
     if not texto or not texto.strip():
@@ -69,9 +70,10 @@ def mensagem():
             "salva_no_banco": False
         }), 400
 
-    salvar_mensagem(texto)
+    salvar_mensagem(usuario, texto)
 
     return jsonify({
+        "usuario": usuario,
         "mensagem_recebida": texto,
         "status": "recebida",
         "salva_no_banco": True
@@ -85,7 +87,7 @@ def listar_mensagens():
     cursor = conexao.cursor()
 
     cursor.execute("""
-        SELECT id, mensagem
+        SELECT id, usuario, mensagem
         FROM mensagens
         ORDER BY id DESC
     """)
@@ -96,9 +98,10 @@ def listar_mensagens():
 
     resultado = []
 
-    for id_mensagem, texto in mensagens:
+    for id_mensagem, usuario, texto in mensagens:
         resultado.append({
             "id": id_mensagem,
+            "usuario": usuario,
             "mensagem": texto
         })
 

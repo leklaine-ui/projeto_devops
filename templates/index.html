@@ -35,6 +35,12 @@
     <h1>Aplicação DevOps</h1>
 
     <input
+        id="usuario"
+        type="text"
+        placeholder="Digite seu nome"
+    >
+
+    <input
         id="mensagem"
         type="text"
         placeholder="Digite uma mensagem"
@@ -70,7 +76,7 @@
                             document.createElement("li");
 
                         linha.innerText =
-                            item.id + " - " + item.mensagem;
+                            item.id + " - " + item.usuario + ": " + item.mensagem;
 
                         lista.appendChild(linha);
 
@@ -82,13 +88,16 @@
 
         function enviarMensagem() {
 
+            const usuario =
+                document.getElementById("usuario").value.trim();
+
             const campo =
                 document.getElementById("mensagem");
 
             const mensagem =
                 campo.value.trim();
 
-            if (mensagem === "") {
+            if (usuario === "" || mensagem === "") {
                 return;
             }
 
@@ -101,6 +110,7 @@
                 },
 
                 body: JSON.stringify({
+                    usuario: usuario,
                     mensagem: mensagem
                 })
 

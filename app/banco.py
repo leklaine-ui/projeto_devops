@@ -18,9 +18,16 @@ def criar_banco():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS mensagens (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario TEXT NOT NULL DEFAULT "anonimo",
             mensagem TEXT NOT NULL
         )
     """)
+
+    cursor.execute("PRAGMA table_info(mensagens)")
+    colunas = [linha[1] for linha in cursor.fetchall()]
+
+    if "usuario" not in colunas:
+        cursor.execute("ALTER TABLE mensagens ADD COLUMN usuario TEXT NOT NULL DEFAULT 'anonimo'")
 
     conexao.commit()
     conexao.close()
