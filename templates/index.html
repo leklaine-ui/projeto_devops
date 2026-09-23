@@ -91,10 +91,21 @@
                         const linha =
                             document.createElement("li");
 
-                        linha.innerHTML =
-                            '<span class="usuario">' + item.usuario + '</span><br>' +
-                            item.mensagem +
-                            '<span class="data-hora">' + item.data_hora + '</span>';
+                        const usuario = document.createElement("span");
+                        usuario.className = "usuario";
+                        usuario.textContent = item.usuario;
+
+                        const mensagem = document.createElement("span");
+                        mensagem.textContent = " — " + item.mensagem;
+
+                        const dataHora = document.createElement("span");
+                        dataHora.className = "data-hora";
+                        dataHora.textContent = item.data_hora;
+
+                        linha.textContent = item.id + " - ";
+                        linha.appendChild(usuario);
+                        linha.appendChild(mensagem);
+                        linha.appendChild(dataHora);
 
                         lista.appendChild(linha);
 
