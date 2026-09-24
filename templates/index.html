@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Projeto DevOps</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+        }
+
+        input {
+            padding: 10px;
+            width: 250px;
+        }
+
+        button {
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        li {
+            list-style: none;
+            margin-bottom: 12px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f8f8f8;
+        }
+
+        .usuario {
+            font-weight: bold;
+        }
+
+        .data-hora {
+            display: block;
+            margin-top: 6px;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Aplicação DevOps</h1>
+
+    <input
+        id="usuario"
+        type="text"
+        placeholder="Digite seu nome"
+    >
+
+    <input
+        id="mensagem"
+        type="text"
+        placeholder="Digite uma mensagem"
+    >
+
+    <button onclick="enviarMensagem()">
+        Enviar
+    </button>
+
+    <h2>Histórico de mensagens</h2>
+
+    <ul id="historico">
+    </ul>
+
+    <script>
+
+        function carregarMensagens() {
+
+            fetch("/api/mensagens")
+
+                .then(resposta => resposta.json())
+
+                .then(mensagens => {
+
+                    const lista =
+                        document.getElementById("historico");
+
+                    lista.innerHTML = "";
+
+                    mensagens.forEach(item => {
+
+                        const linha =
+                            document.createElement("li");
+
+                        const usuario = document.createElement("span");
+                        usuario.className = "usuario";
+                        usuario.textContent = item.usuario;
+
+                        const mensagem = document.createElement("span");
+                        mensagem.textContent = " — " + item.mensagem;
+
+                        const dataHora = document.createElement("span");
+                        dataHora.className = "data-hora";
+                        dataHora.textContent = item.data_hora;
+
+                        linha.textContent = item.id + " - ";
+                        linha.appendChild(usuario);
+                        linha.appendChild(mensagem);
+                        linha.appendChild(dataHora);
+
+                        lista.appendChild(linha);
+
+                    });
+
+                });
+        }
+
+
+        function enviarMensagem() {
+
+            const usuario =
+                document.getElementById("usuario").value.trim();
+
+            const campo =
+                document.getElementById("mensagem");
+
+            const mensagem =
+                campo.value.trim();
+
+            if (usuario === "" || mensagem === "") {
+                return;
+            }
+
+            fetch("/api/mensagem", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    usuario: usuario,
+                    mensagem: mensagem
+                })
+
+            })
+
+            .then(resposta => resposta.json())
+
+            .then(dados => {
+
+                campo.value = "";
+
+                carregarMensagens();
+
+            });
+        }
+
+
+        carregarMensagens();
+
+    </script>
+
+</body>
+
+</html>
