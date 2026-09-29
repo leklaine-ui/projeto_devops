@@ -1,11 +1,12 @@
+import os
 import sqlite3
-
 from flask import Flask, jsonify, request, render_template
-
 from app.banco import BANCO, criar_banco
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 
-app = Flask(__name__, template_folder="../templates")
+app = Flask(__name__, template_folder=TEMPLATES_DIR)
 
 
 criar_banco()
