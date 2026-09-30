@@ -31,3 +31,9 @@ jobs:
           sleep 5
           curl --fail http://localhost:5000/health
           docker stop projeto_devops_container
+
+      - name: Recarregar PythonAnywhere
+        run: |
+          curl -X POST \
+            -H "Authorization: Token ${{ secrets.PYTHONANYWHERE_API_TOKEN }}" \
+            https://www.pythonanywhere.com/api/v0/user/Lek/webapps/lek.pythonanywhere.com/reload/ 
