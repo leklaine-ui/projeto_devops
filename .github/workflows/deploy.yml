@@ -1,3 +1,4 @@
+
 name: Deploy
 
 on:
@@ -34,6 +35,6 @@ jobs:
 
       - name: Recarregar PythonAnywhere
         run: |
-          curl -X POST \
+          curl --fail-with-body -X POST \
             -H "Authorization: Token ${{ secrets.PYTHONANYWHERE_API_TOKEN }}" \
-            https://www.pythonanywhere.com/api/v0/user/Lek/webapps/lek.pythonanywhere.com/reload/ 
+            https://www.pythonanywhere.com/api/v0/user/Lek/webapps/lek.pythonanywhere.com/reload/
