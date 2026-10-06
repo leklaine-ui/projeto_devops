@@ -33,6 +33,10 @@ jobs:
           curl --fail http://localhost:5000/health
           docker stop projeto_devops_container
 
+      - name: Verificar tamanho do token
+        run: |
+          echo -n "${{ secrets.PYTHONANYWHERE_API_TOKEN }}" | wc -c
+      
       - name: Recarregar PythonAnywhere
         run: |
           curl --fail-with-body -X POST \
