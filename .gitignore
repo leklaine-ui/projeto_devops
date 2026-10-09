@@ -5,3 +5,10 @@ Untitled.ipynb
 *.ipynb
 dados/*.db
 .pytest_cache/
+
+# Cobertura de testes
+.coverage
+htmlcov/
+
+# Arquivo interno de operações do Git
+/FETCH_HEAD
