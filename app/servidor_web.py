@@ -4,11 +4,15 @@ import sqlite3
 from flask import Flask, jsonify, render_template, request
 
 from app.banco import BANCO, criar_banco
+from app.exportacao_web import exportacao_bp
+from app.livros import livros_bp
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 
 app = Flask(__name__, template_folder=TEMPLATES_DIR)
+app.register_blueprint(livros_bp)
+app.register_blueprint(exportacao_bp)
 
 criar_banco()
 
