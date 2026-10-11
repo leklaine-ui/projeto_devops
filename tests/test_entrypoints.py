@@ -6,7 +6,7 @@ from app import banco
 
 
 def test_main_executado_como_programa(capsys):
-    runpy.run_module("app.main", run_name="__main__")
+    runpy.run_path("app/main.py", run_name="__main__")
 
     resultado = capsys.readouterr()
     assert "Aplicação DevOps funcionando!" in resultado.out
@@ -27,7 +27,7 @@ def test_banco_executado_como_programa(
 
     monkeypatch.setattr(sqlite3, "connect", conectar_seguro)
 
-    runpy.run_module("app.banco", run_name="__main__")
+    runpy.run_path("app/banco.py", run_name="__main__")
 
     resultado = capsys.readouterr()
     assert "Banco criado com sucesso" in resultado.out
