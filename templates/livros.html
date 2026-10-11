@@ -108,6 +108,39 @@
         <h2>Livros cadastrados</h2>
         <div id="lista-livros">Carregando livros...</div>
     </section>
+
+    <section class="painel" id="painel-capitulos" hidden>
+        <h2 id="titulo-painel-capitulos">Capítulos do livro</h2>
+        <p id="mensagem-capitulo" class="mensagem" role="status"></p>
+
+        <form id="form-capitulo">
+            <input type="hidden" id="capitulo-id">
+
+            <label for="titulo-capitulo">Título do capítulo *</label>
+            <input id="titulo-capitulo" required maxlength="250">
+
+            <label for="ordem-capitulo">Ordem *</label>
+            <input id="ordem-capitulo" type="number" min="1" value="1" required>
+
+            <label for="conteudo-capitulo">Conteúdo</label>
+            <textarea id="conteudo-capitulo" rows="10"></textarea>
+
+            <button type="submit" id="botao-salvar-capitulo">
+                Salvar capítulo
+            </button>
+            <button type="button" class="secundario"
+                    id="botao-cancelar-capitulo" hidden>
+                Cancelar edição
+            </button>
+            <button type="button" class="secundario"
+                    id="botao-fechar-capitulos">
+                Fechar capítulos
+            </button>
+        </form>
+
+        <h3>Capítulos cadastrados</h3>
+        <div id="lista-capitulos">Selecione um livro.</div>
+    </section>
 </main>
 
 <script>
@@ -121,6 +154,22 @@
     const botaoSalvar = document.getElementById("botao-salvar");
     const botaoCancelar = document.getElementById("botao-cancelar");
 
+    const painelCapitulos = document.getElementById("painel-capitulos");
+    const tituloPainelCapitulos =
+        document.getElementById("titulo-painel-capitulos");
+    const formularioCapitulo = document.getElementById("form-capitulo");
+    const campoCapituloId = document.getElementById("capitulo-id");
+    const campoTituloCapitulo = document.getElementById("titulo-capitulo");
+    const campoOrdemCapitulo = document.getElementById("ordem-capitulo");
+    const campoConteudoCapitulo = document.getElementById("conteudo-capitulo");
+    const mensagemCapitulo = document.getElementById("mensagem-capitulo");
+    const listaCapitulos = document.getElementById("lista-capitulos");
+    const botaoSalvarCapitulo =
+        document.getElementById("botao-salvar-capitulo");
+    const botaoCancelarCapitulo =
+        document.getElementById("botao-cancelar-capitulo");
+    let livroCapitulosId = null;
+
     function mostrarMensagem(texto) {
         mensagem.textContent = texto;
     }
@@ -132,6 +181,87 @@
             "Cadastrar livro";
         botaoSalvar.textContent = "Cadastrar livro";
         botaoCancelar.hidden = true;
+    }
+
+    function mostrarMensagemCapitulo(texto) {
+        mensagemCapitulo.textContent = texto;
+    }
+
+    function limparFormularioCapitulo() {
+        formularioCapitulo.reset();
+        campoCapituloId.value = "";
+        campoOrdemCapitulo.value = "1";
+        botaoSalvarCapitulo.textContent = "Salvar capítulo";
+        botaoCancelarCapitulo.hidden = true;
+    }
+
+    async function abrirCapitulos(livro) {
+        livroCapitulosId = livro.id;
+        tituloPainelCapitulos.textContent = "Capítulos: " + livro.titulo;
+        painelCapitulos.hidden = false;
+        limparFormularioCapitulo();
+        mostrarMensagemCapitulo("");
+        await carregarCapitulos();
+        painelCapitulos.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    async function carregarCapitulos() {
+        listaCapitulos.textContent = "Carregando capítulos...";
+
+        try {
+            const resposta = await fetch(
+                "/api/livros/" + livroCapitulosId
+            );
+            const livro = await resposta.json();
+
+            if (!resposta.ok) {
+                throw new Error(
+                    livro.erro || "Não foi possível carregar o livro."
+                );
+            }
+
+            listaCapitulos.replaceChildren();
+            const capitulos = livro.capitulos || [];
+
+            if (capitulos.length === 0) {
+                listaCapitulos.textContent = "Nenhum capítulo cadastrado.";
+                listaCapitulos.className = "vazio";
+                return;
+            }
+
+            listaCapitulos.className = "";
+
+            capitulos.forEach(capitulo => {
+                const cartao = document.createElement("article");
+                cartao.className = "capitulo";
+
+                const titulo = document.createElement("h4");
+                titulo.textContent = capitulo.ordem + ". " + capitulo.titulo;
+
+                const conteudo = document.createElement("p");
+                conteudo.className = "conteudo-capitulo";
+                conteudo.textContent = capitulo.conteudo || "Sem conteúdo.";
+
+                const editar = document.createElement("button");
+                editar.type = "button";
+                editar.textContent = "Editar capítulo";
+                editar.addEventListener("click", () => {
+                    campoCapituloId.value = capitulo.id;
+                    campoTituloCapitulo.value = capitulo.titulo;
+                    campoOrdemCapitulo.value = capitulo.ordem;
+                    campoConteudoCapitulo.value = capitulo.conteudo || "";
+                    botaoSalvarCapitulo.textContent = "Salvar alterações";
+                    botaoCancelarCapitulo.hidden = false;
+                    mostrarMensagemCapitulo("");
+                    campoTituloCapitulo.focus();
+                });
+
+                cartao.append(titulo, conteudo, editar);
+                listaCapitulos.appendChild(cartao);
+            });
+        } catch (erro) {
+            listaCapitulos.textContent = erro.message;
+        }
     }
 
     async function carregarLivros() {
@@ -181,13 +311,118 @@
                     window.scrollTo({ top: 0, behavior: "smooth" });
                 });
 
-                cartao.append(titulo, autor, descricao, editar);
+                const gerenciarCapitulos = document.createElement("button");
+                gerenciarCapitulos.type = "button";
+                gerenciarCapitulos.className = "secundario";
+                gerenciarCapitulos.textContent = "Gerenciar capítulos";
+                gerenciarCapitulos.addEventListener("click", () => {
+                    abrirCapitulos(livro);
+                });
+
+                const baixarPdf = document.createElement("button");
+                baixarPdf.type = "button";
+                baixarPdf.className = "secundario";
+                baixarPdf.textContent = "Baixar PDF";
+                baixarPdf.addEventListener("click", () => {
+                    window.location.href =
+                        `/api/livros/${livro.id}/exportar/pdf`;
+                });
+
+                const baixarEpub = document.createElement("button");
+                baixarEpub.type = "button";
+                baixarEpub.className = "secundario";
+                baixarEpub.textContent = "Baixar EPUB";
+                baixarEpub.addEventListener("click", () => {
+                    window.location.href =
+                        `/api/livros/${livro.id}/exportar/epub`;
+                });
+
+                cartao.append(
+                    titulo,
+                    autor,
+                    descricao,
+                    editar,
+                    gerenciarCapitulos,
+                    baixarPdf,
+                    baixarEpub
+                );
                 lista.appendChild(cartao);
             });
         } catch (erro) {
             lista.textContent = erro.message;
         }
     }
+
+    formularioCapitulo.addEventListener("submit", async evento => {
+        evento.preventDefault();
+
+        const id = campoCapituloId.value;
+        const titulo = campoTituloCapitulo.value.trim();
+        const ordem = Number(campoOrdemCapitulo.value);
+
+        if (!titulo) {
+            mostrarMensagemCapitulo("Informe o título do capítulo.");
+            return;
+        }
+
+        if (!Number.isInteger(ordem) || ordem < 1) {
+            mostrarMensagemCapitulo(
+                "A ordem deve ser um número inteiro positivo."
+            );
+            return;
+        }
+
+        const dados = {
+            titulo,
+            ordem,
+            conteudo: campoConteudoCapitulo.value
+        };
+
+        botaoSalvarCapitulo.disabled = true;
+
+        try {
+            const url = id
+                ? "/api/capitulos/" + id
+                : "/api/livros/" + livroCapitulosId + "/capitulos";
+
+            const resposta = await fetch(url, {
+                method: id ? "PUT" : "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(dados)
+            });
+
+            const resultado = await resposta.json();
+
+            if (!resposta.ok) {
+                throw new Error(
+                    resultado.erro || "Não foi possível salvar o capítulo."
+                );
+            }
+
+            limparFormularioCapitulo();
+            mostrarMensagemCapitulo(
+                id ? "Capítulo atualizado!" : "Capítulo cadastrado!"
+            );
+            await carregarCapitulos();
+            await carregarLivros();
+        } catch (erro) {
+            mostrarMensagemCapitulo(erro.message);
+        } finally {
+            botaoSalvarCapitulo.disabled = false;
+        }
+    });
+
+    botaoCancelarCapitulo.addEventListener("click", () => {
+        limparFormularioCapitulo();
+        mostrarMensagemCapitulo("");
+    });
+
+    document.getElementById("botao-fechar-capitulos")
+        .addEventListener("click", () => {
+            painelCapitulos.hidden = true;
+            livroCapitulosId = null;
+            limparFormularioCapitulo();
+        });
 
     formulario.addEventListener("submit", async evento => {
         evento.preventDefault();

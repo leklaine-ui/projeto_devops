@@ -4,7 +4,7 @@ from pathlib import Path
 
 from flask import Blueprint, jsonify, send_file
 
-from app.exportador import exportar_markdown, exportar_pdf
+from app.exportador import exportar_epub, exportar_markdown, exportar_pdf
 
 exportacao_bp = Blueprint("exportacao", __name__)
 
@@ -21,6 +21,9 @@ def preparar_download(livro_id, formato):
         if formato == "pdf":
             exportar_pdf(livro_id, caminho)
             mimetype = "application/pdf"
+        elif formato == "epub":
+            exportar_epub(livro_id, caminho)
+            mimetype = "application/epub+zip"
         else:
             exportar_markdown(livro_id, caminho)
             mimetype = "text/markdown; charset=utf-8"
@@ -60,3 +63,13 @@ def baixar_pdf(livro_id):
         return jsonify({"erro": str(erro)}), 404
     except RuntimeError as erro:
         return jsonify({"erro": str(erro)}), 500
+
+@exportacao_bp.route(
+    "/api/livros/<int:livro_id>/exportar/epub",
+    methods=["GET"],
+)
+def baixar_epub(livro_id):
+    try:
+        return preparar_download(livro_id, "epub")
+    except ValueError as erro:
+        return jsonify({"erro": str(erro)}), 404
