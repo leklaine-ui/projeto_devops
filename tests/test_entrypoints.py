@@ -50,3 +50,19 @@ def test_mensagem_sem_json():
     assert resposta.status_code == 400
     assert resposta.get_json()["status"] == "erro"
 
+
+
+def test_servidor_web_executado_como_programa(monkeypatch):
+    from flask.app import Flask
+
+    chamadas = {}
+
+    def run_falso(self, **kwargs):
+        chamadas.update(kwargs)
+
+    monkeypatch.setattr(Flask, "run", run_falso)
+
+    runpy.run_path("app/servidor_web.py", run_name="__main__")
+
+    assert chamadas["host"] == "0.0.0.0"
+    assert chamadas["port"] == 5000

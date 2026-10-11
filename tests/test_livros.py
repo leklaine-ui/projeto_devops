@@ -179,3 +179,131 @@ def test_atualizar_livro_preserva_campos_nao_enviados(cliente):
     assert dados["titulo"] == "Título revisado"
     assert dados["autor"] == "Autor original"
     assert dados["descricao"] == "Descrição original"
+
+
+def test_listar_livros(cliente):
+    criar_livro(cliente, "Primeiro livro")
+    criar_livro(cliente, "Segundo livro")
+
+    resposta = cliente.get("/api/livros")
+
+    assert resposta.status_code == 200
+    titulos = [livro["titulo"] for livro in resposta.get_json()]
+    assert "Primeiro livro" in titulos
+    assert "Segundo livro" in titulos
+
+
+def test_criar_capitulo_com_conteudo_invalido(cliente):
+    livro_id = criar_livro(cliente).get_json()["id"]
+
+    resposta = cliente.post(
+        f"/api/livros/{livro_id}/capitulos",
+        json={"titulo": "Capítulo", "conteudo": ["texto"]}
+    )
+
+    assert resposta.status_code == 400
+    assert resposta.get_json()["erro"] == (
+        "O conteúdo do capítulo deve ser texto."
+    )
+
+
+@pytest.mark.parametrize("ordem", [True, "1", 0, -1, 1.5])
+def test_criar_capitulo_com_ordem_invalida(cliente, ordem):
+    livro_id = criar_livro(cliente).get_json()["id"]
+
+    resposta = cliente.post(
+        f"/api/livros/{livro_id}/capitulos",
+        json={
+            "titulo": "Capítulo",
+            "conteudo": "Texto",
+            "ordem": ordem
+        }
+    )
+
+    assert resposta.status_code == 400
+    assert resposta.get_json()["erro"] == (
+        "A ordem deve ser um número inteiro positivo."
+    )
+
+
+def test_criar_capitulo_em_livro_inexistente(cliente):
+    resposta = cliente.post(
+        "/api/livros/999999/capitulos",
+        json={"titulo": "Capítulo", "conteudo": "Texto"}
+    )
+
+    assert resposta.status_code == 404
+    assert resposta.get_json()["erro"] == "Livro não encontrado."
+
+
+def test_atualizar_capitulo_inexistente(cliente):
+    resposta = cliente.put(
+        "/api/capitulos/999999",
+        json={"titulo": "Capítulo atualizado"}
+    )
+
+    assert resposta.status_code == 404
+    assert resposta.get_json()["erro"] == "Capítulo não encontrado."
+
+
+def test_atualizar_capitulo_com_titulo_invalido(cliente):
+    livro_id = criar_livro(cliente).get_json()["id"]
+    capitulo = cliente.post(
+        f"/api/livros/{livro_id}/capitulos",
+        json={"titulo": "Capítulo", "conteudo": "Texto"}
+    ).get_json()
+
+    resposta = cliente.put(
+        f"/api/capitulos/{capitulo['id']}",
+        json={"titulo": 123}
+    )
+
+    assert resposta.status_code == 400
+    assert resposta.get_json()["erro"] == (
+        "O título do capítulo é obrigatório."
+    )
+
+
+def test_atualizar_capitulo_com_conteudo_invalido(cliente):
+    livro_id = criar_livro(cliente).get_json()["id"]
+    capitulo = cliente.post(
+        f"/api/livros/{livro_id}/capitulos",
+        json={"titulo": "Capítulo", "conteudo": "Texto"}
+    ).get_json()
+
+    resposta = cliente.put(
+        f"/api/capitulos/{capitulo['id']}",
+        json={"conteudo": ["texto"]}
+    )
+
+    assert resposta.status_code == 400
+    assert resposta.get_json()["erro"] == (
+        "O conteúdo do capítulo deve ser texto."
+    )
+
+
+@pytest.mark.parametrize("ordem", [True, "2", 0, -1, 1.5])
+def test_atualizar_capitulo_com_ordem_invalida(cliente, ordem):
+    livro_id = criar_livro(cliente).get_json()["id"]
+    capitulo = cliente.post(
+        f"/api/livros/{livro_id}/capitulos",
+        json={"titulo": "Capítulo", "conteudo": "Texto"}
+    ).get_json()
+
+    resposta = cliente.put(
+        f"/api/capitulos/{capitulo['id']}",
+        json={"ordem": ordem}
+    )
+
+    assert resposta.status_code == 400
+    assert resposta.get_json()["erro"] == (
+        "A ordem deve ser um número inteiro positivo."
+    )
+
+
+
+def test_pagina_livros(cliente):
+    resposta = cliente.get("/livros")
+
+    assert resposta.status_code == 200
+    assert b"Biblioteca de Livros" in resposta.data
