@@ -45,7 +45,7 @@ jobs:
 
       - name: Executar testes
         run: |
-          run: PYTHONPATH="${GITHUB_WORKSPACE}" pytest -v --cov=app --cov-report=term-missing
+          PYTHONPATH="${GITHUB_WORKSPACE}" pytest -v --cov=app --cov-report=term-missing
 
   docker-build:
     name: Validar imagem Docker
