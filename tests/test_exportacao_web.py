@@ -1,8 +1,8 @@
 
 import pytest
 
-from app.servidor_web import app
 from app import exportacao_web
+from app.servidor_web import app
 
 
 @pytest.fixture

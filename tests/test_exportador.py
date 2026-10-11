@@ -3,8 +3,7 @@ import subprocess
 
 import pytest
 
-from app import exportador
-from app import livros_db
+from app import exportador, livros_db
 
 
 @pytest.fixture
