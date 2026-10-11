@@ -178,3 +178,44 @@ def atualizar_capitulo(capitulo_id):
         ).fetchone()
 
     return jsonify(dict(atualizado))
+
+@livros_bp.route("/api/livros/<int:livro_id>", methods=["PUT"])
+def atualizar_livro(livro_id):
+    dados = request.get_json(silent=True) or {}
+
+    with conectar_banco() as conexao:
+        livro = conexao.execute(
+            "SELECT * FROM livros WHERE id = ?",
+            (livro_id,)
+        ).fetchone()
+
+        if livro is None:
+            return jsonify({"erro": "Livro não encontrado."}), 404
+
+        titulo = dados.get("titulo", livro["titulo"])
+        autor = dados.get("autor", livro["autor"])
+        descricao = dados.get("descricao", livro["descricao"])
+
+        if not isinstance(titulo, str) or not titulo.strip():
+            return jsonify({
+                "erro": "O título do livro é obrigatório."
+            }), 400
+
+        if not isinstance(autor, str) or not isinstance(descricao, str):
+            return jsonify({
+                "erro": "Autor e descrição devem ser textos."
+            }), 400
+
+        conexao.execute("""
+            UPDATE livros
+            SET titulo = ?, autor = ?, descricao = ?,
+                atualizado_em = CURRENT_TIMESTAMP
+            WHERE id = ?
+        """, (titulo.strip(), autor.strip(), descricao.strip(), livro_id))
+
+        atualizado = conexao.execute(
+            "SELECT * FROM livros WHERE id = ?",
+            (livro_id,)
+        ).fetchone()
+
+    return jsonify(dict(atualizado))

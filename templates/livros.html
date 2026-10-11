@@ -1,0 +1,244 @@
+```html
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biblioteca de Livros</title>
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 24px;
+            font-family: Arial, sans-serif;
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+
+        main {
+            max-width: 950px;
+            margin: auto;
+        }
+
+        h1 { color: #1d4ed8; }
+
+        .painel, .livro {
+            background: white;
+            padding: 20px;
+            margin-bottom: 18px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px #0000000d;
+        }
+
+        label {
+            display: block;
+            margin-top: 12px;
+            font-weight: bold;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 11px;
+            margin-top: 6px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font: inherit;
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        button, .link {
+            display: inline-block;
+            margin-top: 14px;
+            padding: 10px 15px;
+            border: 0;
+            border-radius: 6px;
+            background: #2563eb;
+            color: white;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .secundario { background: #64748b; }
+        .mensagem { margin: 12px 0; }
+        .vazio { color: #64748b; }
+
+        @media (max-width: 600px) {
+            body { padding: 12px; }
+        }
+    </style>
+</head>
+<body>
+<main>
+    <h1>📚 Biblioteca de Livros</h1>
+    <p>Cadastre, consulte e edite seus livros.</p>
+    <a class="link" href="/">Voltar ao chat</a>
+
+    <section class="painel">
+        <h2 id="titulo-formulario">Cadastrar livro</h2>
+
+        <form id="form-livro">
+            <input type="hidden" id="livro-id">
+
+            <label for="titulo">Título *</label>
+            <input id="titulo" required maxlength="250">
+
+            <label for="autor">Autor</label>
+            <input id="autor" maxlength="250">
+
+            <label for="descricao">Descrição</label>
+            <textarea id="descricao"></textarea>
+
+            <button type="submit" id="botao-salvar">Cadastrar livro</button>
+            <button type="button" class="secundario"
+                    id="botao-cancelar" hidden>
+                Cancelar edição
+            </button>
+        </form>
+
+        <p id="mensagem" class="mensagem" role="status"></p>
+    </section>
+
+    <section>
+        <h2>Livros cadastrados</h2>
+        <div id="lista-livros">Carregando livros...</div>
+    </section>
+</main>
+
+<script>
+    const formulario = document.getElementById("form-livro");
+    const campoId = document.getElementById("livro-id");
+    const campoTitulo = document.getElementById("titulo");
+    const campoAutor = document.getElementById("autor");
+    const campoDescricao = document.getElementById("descricao");
+    const mensagem = document.getElementById("mensagem");
+    const lista = document.getElementById("lista-livros");
+    const botaoSalvar = document.getElementById("botao-salvar");
+    const botaoCancelar = document.getElementById("botao-cancelar");
+
+    function mostrarMensagem(texto) {
+        mensagem.textContent = texto;
+    }
+
+    function cancelarEdicao() {
+        formulario.reset();
+        campoId.value = "";
+        document.getElementById("titulo-formulario").textContent =
+            "Cadastrar livro";
+        botaoSalvar.textContent = "Cadastrar livro";
+        botaoCancelar.hidden = true;
+    }
+
+    async function carregarLivros() {
+        lista.textContent = "Carregando livros...";
+
+        try {
+            const resposta = await fetch("/api/livros");
+            if (!resposta.ok) throw new Error("Falha ao carregar livros.");
+
+            const livros = await resposta.json();
+            lista.replaceChildren();
+
+            if (livros.length === 0) {
+                lista.textContent = "Nenhum livro cadastrado.";
+                lista.className = "vazio";
+                return;
+            }
+
+            lista.className = "";
+
+            livros.forEach(livro => {
+                const cartao = document.createElement("article");
+                cartao.className = "livro";
+
+                const titulo = document.createElement("h3");
+                titulo.textContent = livro.titulo;
+
+                const autor = document.createElement("p");
+                autor.textContent = "Autor: " + (livro.autor || "Não informado");
+
+                const descricao = document.createElement("p");
+                descricao.textContent = livro.descricao || "Sem descrição.";
+
+                const editar = document.createElement("button");
+                editar.textContent = "Editar";
+                editar.addEventListener("click", () => {
+                    campoId.value = livro.id;
+                    campoTitulo.value = livro.titulo;
+                    campoAutor.value = livro.autor || "";
+                    campoDescricao.value = livro.descricao || "";
+
+                    document.getElementById("titulo-formulario")
+                        .textContent = "Editar livro";
+                    botaoSalvar.textContent = "Salvar alterações";
+                    botaoCancelar.hidden = false;
+                    mostrarMensagem("");
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                });
+
+                cartao.append(titulo, autor, descricao, editar);
+                lista.appendChild(cartao);
+            });
+        } catch (erro) {
+            lista.textContent = erro.message;
+        }
+    }
+
+    formulario.addEventListener("submit", async evento => {
+        evento.preventDefault();
+
+        const id = campoId.value;
+        const dados = {
+            titulo: campoTitulo.value.trim(),
+            autor: campoAutor.value.trim(),
+            descricao: campoDescricao.value.trim()
+        };
+
+        if (!dados.titulo) {
+            mostrarMensagem("Informe o título do livro.");
+            return;
+        }
+
+        botaoSalvar.disabled = true;
+
+        try {
+            const resposta = await fetch(
+                id ? `/api/livros/${id}` : "/api/livros",
+                {
+                    method: id ? "PUT" : "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(dados)
+                }
+            );
+
+            const resultado = await resposta.json();
+
+            if (!resposta.ok) {
+                throw new Error(resultado.erro || "Não foi possível salvar.");
+            }
+
+            cancelarEdicao();
+            mostrarMensagem(id ? "Livro atualizado!" : "Livro cadastrado!");
+            await carregarLivros();
+        } catch (erro) {
+            mostrarMensagem(erro.message);
+        } finally {
+            botaoSalvar.disabled = false;
+        }
+    });
+
+    botaoCancelar.addEventListener("click", () => {
+        cancelarEdicao();
+        mostrarMensagem("");
+    });
+
+    carregarLivros();
+</script>
+</body>
+</html>
+```

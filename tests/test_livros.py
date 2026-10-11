@@ -84,3 +84,98 @@ def test_rejeitar_titulo_vazio_em_capitulo(cliente):
 def test_livro_inexistente(cliente):
     resposta = cliente.get("/api/livros/999999")
     assert resposta.status_code == 404
+
+
+def test_atualizar_livro_com_sucesso(cliente):
+    livro = criar_livro(cliente).get_json()
+    livro_id = livro["id"]
+
+    resposta = cliente.put(
+        f"/api/livros/{livro_id}",
+        json={
+            "titulo": "Livro atualizado",
+            "autor": "Novo autor",
+            "descricao": "Nova descrição"
+        }
+    )
+
+    assert resposta.status_code == 200
+    dados = resposta.get_json()
+    assert dados["titulo"] == "Livro atualizado"
+    assert dados["autor"] == "Novo autor"
+    assert dados["descricao"] == "Nova descrição"
+
+
+def test_atualizar_livro_inexistente(cliente):
+    resposta = cliente.put(
+        "/api/livros/999999",
+        json={"titulo": "Livro inexistente"}
+    )
+
+    assert resposta.status_code == 404
+
+
+def test_atualizar_livro_com_titulo_vazio(cliente):
+    livro_id = criar_livro(cliente).get_json()["id"]
+
+    resposta = cliente.put(
+        f"/api/livros/{livro_id}",
+        json={"titulo": "   "}
+    )
+
+    assert resposta.status_code == 400
+
+
+def test_atualizar_livro_com_titulo_de_tipo_invalido(cliente):
+    livro_id = criar_livro(cliente).get_json()["id"]
+
+    resposta = cliente.put(
+        f"/api/livros/{livro_id}",
+        json={"titulo": 123}
+    )
+
+    assert resposta.status_code == 400
+
+
+def test_atualizar_livro_com_autor_invalido(cliente):
+    livro_id = criar_livro(cliente).get_json()["id"]
+
+    resposta = cliente.put(
+        f"/api/livros/{livro_id}",
+        json={"autor": 123}
+    )
+
+    assert resposta.status_code == 400
+
+
+def test_atualizar_livro_com_descricao_invalida(cliente):
+    livro_id = criar_livro(cliente).get_json()["id"]
+
+    resposta = cliente.put(
+        f"/api/livros/{livro_id}",
+        json={"descricao": 123}
+    )
+
+    assert resposta.status_code == 400
+
+
+def test_atualizar_livro_preserva_campos_nao_enviados(cliente):
+    livro = cliente.post(
+        "/api/livros",
+        json={
+            "titulo": "Título original",
+            "autor": "Autor original",
+            "descricao": "Descrição original"
+        }
+    ).get_json()
+
+    resposta = cliente.put(
+        f"/api/livros/{livro['id']}",
+        json={"titulo": "Título revisado"}
+    )
+
+    assert resposta.status_code == 200
+    dados = resposta.get_json()
+    assert dados["titulo"] == "Título revisado"
+    assert dados["autor"] == "Autor original"
+    assert dados["descricao"] == "Descrição original"

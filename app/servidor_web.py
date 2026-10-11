@@ -36,6 +36,11 @@ def inicio():
     return render_template("index.html")
 
 
+@app.route("/livros", methods=["GET"])
+def pagina_livros():
+    return render_template("livros.html")
+
+
 @app.route("/health")
 def health():
     return jsonify({
