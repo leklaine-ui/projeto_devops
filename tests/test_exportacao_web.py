@@ -102,3 +102,23 @@ def test_baixar_pdf_com_erro_de_geracao(cliente, monkeypatch):
     assert resposta.status_code == 500
     assert "Falha ao gerar PDF" in resposta.get_json()["erro"]
 
+
+
+def test_baixar_epub_com_sucesso(cliente, monkeypatch):
+    def epub_falso(livro_id, destino):
+        destino.write_bytes(b"EPUB de teste")
+        return destino
+
+    monkeypatch.setattr(
+        exportacao_web,
+        "exportar_epub",
+        epub_falso,
+    )
+
+    resposta = cliente.get(
+        "/api/livros/1/exportar/epub"
+    )
+
+    assert resposta.status_code == 200
+    assert resposta.mimetype == "application/epub+zip"
+    assert resposta.data == b"EPUB de teste"

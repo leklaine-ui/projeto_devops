@@ -195,3 +195,53 @@ def test_exportar_pdf_com_sucesso(
     assert "# Livro de teste" in chamadas["input"]
     assert chamadas["check"] is False
 
+
+
+def test_exportar_epub_cria_arquivo_valido(banco_teste, tmp_path):
+    import xml.etree.ElementTree as ET
+    import zipfile
+
+    destino = tmp_path / "livro.epub"
+
+    resultado = exportador.exportar_epub(banco_teste, destino)
+
+    assert resultado == destino
+    assert destino.exists()
+
+    with zipfile.ZipFile(destino) as arquivo:
+        nomes = arquivo.namelist()
+
+        assert nomes[0] == "mimetype"
+        assert arquivo.read("mimetype") == b"application/epub+zip"
+        assert arquivo.getinfo("mimetype").compress_type == zipfile.ZIP_STORED
+
+        assert "META-INF/container.xml" in nomes
+        assert "OEBPS/content.opf" in nomes
+        assert "OEBPS/content.xhtml" in nomes
+        assert "OEBPS/nav.xhtml" in nomes
+
+        container = ET.fromstring(
+            arquivo.read("META-INF/container.xml")
+        )
+        pacote = ET.fromstring(arquivo.read("OEBPS/content.opf"))
+        conteudo = ET.fromstring(arquivo.read("OEBPS/content.xhtml"))
+        navegacao = ET.fromstring(arquivo.read("OEBPS/nav.xhtml"))
+
+        assert container.tag.endswith("container")
+        assert pacote.tag.endswith("package")
+        assert conteudo.tag.endswith("html")
+        assert navegacao.tag.endswith("html")
+
+        texto = arquivo.read("OEBPS/content.xhtml").decode("utf-8")
+        assert "Livro de teste" in texto
+        assert "Capítulo 1" in texto
+        assert "Conteúdo do capítulo" in texto
+
+
+def test_exportar_epub_livro_inexistente(tmp_path):
+    destino = tmp_path / "inexistente.epub"
+
+    with pytest.raises(ValueError, match="não encontrado"):
+        exportador.exportar_epub(-1, destino)
+
+    assert not destino.exists()
