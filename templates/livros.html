@@ -123,7 +123,11 @@
             <input id="ordem-capitulo" type="number" min="1" value="1" required>
 
             <label for="conteudo-capitulo">Conteúdo</label>
-            <textarea id="conteudo-capitulo" rows="10"></textarea>
+            <textarea id="conteudo-capitulo" rows="10" lang="pt-BR" spellcheck="true"></textarea>
+            <button type="button" class="secundario"
+                    id="botao-organizar-paragrafos">
+                Organizar parágrafos
+            </button>
 
             <button type="submit" id="botao-salvar-capitulo">
                 Salvar capítulo
@@ -162,6 +166,37 @@
     const campoTituloCapitulo = document.getElementById("titulo-capitulo");
     const campoOrdemCapitulo = document.getElementById("ordem-capitulo");
     const campoConteudoCapitulo = document.getElementById("conteudo-capitulo");
+    const botaoOrganizarParagrafos =
+        document.getElementById("botao-organizar-paragrafos");
+
+    botaoOrganizarParagrafos.addEventListener("click", () => {
+        const linhas = campoConteudoCapitulo.value
+            .split(String.fromCharCode(10))
+            .map((linha) => linha.trimEnd());
+
+        const organizadas = [];
+        let linhaVaziaAnterior = false;
+
+        for (const linha of linhas) {
+            const vazia = linha.trim() === "";
+
+            if (vazia && linhaVaziaAnterior) {
+                continue;
+            }
+
+            organizadas.push(linha);
+            linhaVaziaAnterior = vazia;
+        }
+
+        campoConteudoCapitulo.value = organizadas.join(
+            String.fromCharCode(10)
+        ).trim();
+
+        mostrarMensagemCapitulo(
+            "Parágrafos organizados. Revise antes de salvar."
+        );
+    });
+
     const mensagemCapitulo = document.getElementById("mensagem-capitulo");
     const listaCapitulos = document.getElementById("lista-capitulos");
     const botaoSalvarCapitulo =
