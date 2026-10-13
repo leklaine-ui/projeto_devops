@@ -10,7 +10,7 @@ from app.livros import livros_bp
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 
-app = Flask(__name__, template_folder=TEMPLATES_DIR)
+app = Flask(__name__, template_folder=TEMPLATES_DIR, static_folder=os.path.join(BASE_DIR, "static"), static_url_path="/static")
 app.register_blueprint(livros_bp)
 app.register_blueprint(exportacao_bp)
 
