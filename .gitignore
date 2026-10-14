@@ -12,3 +12,6 @@ htmlcov/
 
 # Arquivo interno de operações do Git
 /FETCH_HEAD
+
+# Arquivos de backup locais
+*.bak
