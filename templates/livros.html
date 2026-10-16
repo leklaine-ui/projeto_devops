@@ -129,6 +129,14 @@
                 Organizar parágrafos
             </button>
 
+            <button type="button" class="secundario"
+                    id="botao-corrigir-texto">
+                Corrigir texto
+            </button>
+
+            <div id="resultados-corretor"
+                 aria-live="polite"></div>
+
             <button type="submit" id="botao-salvar-capitulo">
                 Salvar capítulo
             </button>
@@ -168,6 +176,109 @@
     const campoConteudoCapitulo = document.getElementById("conteudo-capitulo");
     const botaoOrganizarParagrafos =
         document.getElementById("botao-organizar-paragrafos");
+    const botaoCorrigirTexto =
+        document.getElementById("botao-corrigir-texto");
+    const resultadosCorretor =
+        document.getElementById("resultados-corretor");
+
+    botaoCorrigirTexto.addEventListener("click", async () => {
+        const textoOriginal = campoConteudoCapitulo.value;
+
+        if (!textoOriginal.trim()) {
+            mostrarMensagemCapitulo(
+                "Digite o conteúdo do capítulo antes de corrigir."
+            );
+            return;
+        }
+
+        botaoCorrigirTexto.disabled = true;
+        resultadosCorretor.textContent = "";
+        mostrarMensagemCapitulo("Analisando o texto...");
+
+        try {
+            const resposta = await fetch(
+                "/api/capitulos/corrigir-texto",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ texto: textoOriginal })
+                }
+            );
+
+            const dados = await resposta.json();
+
+            if (!resposta.ok) {
+                throw new Error(
+                    dados.erro || "Não foi possível corrigir o texto."
+                );
+            }
+
+            const resumo = document.createElement("p");
+            resumo.textContent =
+                "Análise concluída. Ocorrências encontradas: " +
+                dados.quantidade + ".";
+            resultadosCorretor.appendChild(resumo);
+
+            if (!Array.isArray(dados.sugestoes) ||
+                dados.sugestoes.length === 0) {
+                const semSugestoes = document.createElement("p");
+                semSugestoes.textContent =
+                    "Nenhuma sugestão encontrada.";
+                resultadosCorretor.appendChild(semSugestoes);
+            } else {
+                const listaSugestoes = document.createElement("ol");
+
+                for (const item of dados.sugestoes) {
+                    const entrada = document.createElement("li");
+                    const trecho = document.createElement("p");
+                    const explicacao = document.createElement("p");
+
+                    trecho.textContent =
+                        "Trecho: " + (item.trecho || "Não informado");
+                    explicacao.textContent =
+                        "Explicação: " +
+                        (item.mensagem || "Sem explicação disponível.");
+
+                    entrada.appendChild(trecho);
+                    entrada.appendChild(explicacao);
+
+                    if (Array.isArray(item.sugestoes) &&
+                        item.sugestoes.length > 0) {
+                        const titulo = document.createElement("p");
+                        titulo.textContent = "Sugestões:";
+                        entrada.appendChild(titulo);
+
+                        const alternativas = document.createElement("ul");
+
+                        for (const sugestao of item.sugestoes) {
+                            const alternativa =
+                                document.createElement("li");
+                            alternativa.textContent = sugestao;
+                            alternativas.appendChild(alternativa);
+                        }
+
+                        entrada.appendChild(alternativas);
+                    }
+
+                    listaSugestoes.appendChild(entrada);
+                }
+
+                resultadosCorretor.appendChild(listaSugestoes);
+            }
+
+            mostrarMensagemCapitulo(
+                "Revisão concluída. O texto original foi preservado."
+            );
+        } catch (erro) {
+            mostrarMensagemCapitulo(
+                erro.message || "Erro ao consultar o corretor."
+            );
+        } finally {
+            botaoCorrigirTexto.disabled = false;
+        }
+    });
 
     botaoOrganizarParagrafos.addEventListener("click", () => {
         const linhas = campoConteudoCapitulo.value

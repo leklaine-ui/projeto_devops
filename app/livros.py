@@ -2,6 +2,8 @@ from flask import Blueprint, jsonify, request
 
 from app.livros_db import conectar_banco, criar_tabelas_livros
 
+from app.corretor_texto import corrigir_texto, ErroCorretor
+
 livros_bp = Blueprint("livros", __name__)
 
 criar_tabelas_livros()
@@ -219,3 +221,31 @@ def atualizar_livro(livro_id):
         ).fetchone()
 
     return jsonify(dict(atualizado))
+
+@livros_bp.route(
+    "/api/capitulos/corrigir-texto",
+    methods=["POST"],
+)
+def corrigir_texto_capitulo():
+    dados = request.get_json(silent=True)
+
+    if not isinstance(dados, dict):
+        return jsonify({
+            "erro": "Envie um objeto JSON válido."
+        }), 400
+
+    texto = dados.get("texto")
+
+    if not isinstance(texto, str):
+        return jsonify({
+            "erro": "O conteúdo deve ser um texto."
+        }), 400
+
+    try:
+        resultado = corrigir_texto(texto)
+    except ValueError as erro:
+        return jsonify({"erro": str(erro)}), 400
+    except ErroCorretor as erro:
+        return jsonify({"erro": str(erro)}), 503
+
+    return jsonify(resultado), 200
