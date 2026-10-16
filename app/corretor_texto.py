@@ -3,7 +3,7 @@ import os
 
 import requests
 
-URL_PADRAO = "http://127.0.0.1:8081/v2/check"
+URL_PADRAO = "https://api.languagetool.org/v2/check"
 TEMPO_LIMITE = 10
 TAMANHO_MAXIMO = 20000
 
