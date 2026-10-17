@@ -180,9 +180,11 @@
         document.getElementById("botao-corrigir-texto");
     const resultadosCorretor =
         document.getElementById("resultados-corretor");
+    let textoAnalisadoPeloCorretor = null;
 
     botaoCorrigirTexto.addEventListener("click", async () => {
         const textoOriginal = campoConteudoCapitulo.value;
+        textoAnalisadoPeloCorretor = null;
 
         if (!textoOriginal.trim()) {
             mostrarMensagemCapitulo(
@@ -214,6 +216,8 @@
                     dados.erro || "Não foi possível corrigir o texto."
                 );
             }
+
+            textoAnalisadoPeloCorretor = textoOriginal;
 
             const resumo = document.createElement("p");
             resumo.textContent =
@@ -255,7 +259,62 @@
                         for (const sugestao of item.sugestoes) {
                             const alternativa =
                                 document.createElement("li");
-                            alternativa.textContent = sugestao;
+                            const botaoAplicar =
+                                document.createElement("button");
+
+                            botaoAplicar.type = "button";
+                            botaoAplicar.textContent =
+                                "Aplicar: " + sugestao;
+
+                            botaoAplicar.addEventListener("click", () => {
+                                const textoAtual =
+                                    campoConteudoCapitulo.value;
+
+                                if (
+                                    textoAtual !== textoAnalisadoPeloCorretor
+                                ) {
+                                    textoAnalisadoPeloCorretor = null;
+                                    resultadosCorretor.textContent =
+                                        "O texto foi alterado. Analise-o " +
+                                        "novamente antes de aplicar sugestões.";
+                                    return;
+                                }
+
+                                if (
+                                    !Number.isInteger(item.offset) ||
+                                    !Number.isInteger(item.comprimento) ||
+                                    item.offset < 0 ||
+                                    item.comprimento < 0 ||
+                                    item.offset + item.comprimento >
+                                        textoAtual.length
+                                ) {
+                                    resultadosCorretor.textContent =
+                                        "Não foi possível aplicar esta " +
+                                        "sugestão. Analise o texto novamente.";
+                                    textoAnalisadoPeloCorretor = null;
+                                    return;
+                                }
+
+                                campoConteudoCapitulo.value =
+                                    textoAtual.slice(0, item.offset) +
+                                    sugestao +
+                                    textoAtual.slice(
+                                        item.offset + item.comprimento
+                                    );
+
+                                textoAnalisadoPeloCorretor = null;
+                                resultadosCorretor.textContent =
+                                    "Sugestão aplicada ao campo do capítulo. " +
+                                    "Analise novamente antes de aplicar " +
+                                    "outra sugestão.";
+                                campoConteudoCapitulo.focus();
+                                mostrarMensagemCapitulo(
+                                    "Correção aplicada ao texto. " +
+                                    "Clique em Salvar capítulo para gravar."
+                                );
+                            });
+
+                            alternativa.appendChild(botaoAplicar);
                             alternativas.appendChild(alternativa);
                         }
 
