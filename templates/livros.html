@@ -68,6 +68,14 @@
         .mensagem { margin: 12px 0; }
         .vazio { color: #64748b; }
 
+        .trecho-destacado {
+            background: #fef08a;
+            color: #713f12;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+
         @media (max-width: 600px) {
             body { padding: 12px; }
         }
@@ -240,12 +248,40 @@
                     const explicacao = document.createElement("p");
 
                     trecho.textContent =
-                        "Trecho: " + (item.trecho || "Não informado");
+                        "Contexto: " + (item.trecho || "Não informado");
+
+                    const trechoDestacado = document.createElement("p");
+                    trechoDestacado.appendChild(
+                        document.createTextNode("Trecho identificado: ")
+                    );
+
+                    if (
+                        Number.isInteger(item.offset) &&
+                        Number.isInteger(item.comprimento) &&
+                        item.offset >= 0 &&
+                        item.comprimento > 0 &&
+                        item.offset + item.comprimento <= textoOriginal.length
+                    ) {
+                        const destaque = document.createElement("mark");
+                        destaque.className = "trecho-destacado";
+                        destaque.textContent = textoOriginal.slice(
+                            item.offset,
+                            item.offset + item.comprimento
+                        );
+                        trechoDestacado.appendChild(destaque);
+                    } else {
+                        const semDestaque = document.createElement("span");
+                        semDestaque.textContent =
+                            "Trecho exato indisponível.";
+                        trechoDestacado.appendChild(semDestaque);
+                    }
+
                     explicacao.textContent =
                         "Explicação: " +
                         (item.mensagem || "Sem explicação disponível.");
 
                     entrada.appendChild(trecho);
+                    entrada.appendChild(trechoDestacado);
                     entrada.appendChild(explicacao);
 
                     if (Array.isArray(item.sugestoes) &&
