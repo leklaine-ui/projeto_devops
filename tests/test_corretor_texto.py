@@ -140,3 +140,77 @@ def test_ignora_itens_invalidos_e_normaliza_campos(monkeypatch):
     assert resultado["sugestoes"][0]["sugestoes"] == [
         "Correção"
     ]
+
+
+@pytest.mark.parametrize(
+    "item, original, sugestoes, esperado",
+    [
+        (
+            {"rule": {"category": {"id": "TYPOS"}}},
+            "caza",
+            ["casa"],
+            "ortografia",
+        ),
+        (
+            {"rule": {"category": {"id": "GRAMMAR"}}},
+            "as pessoa",
+            ["as pessoas"],
+            "gramatica",
+        ),
+        (
+            {"rule": {"category": {"id": "PUNCTUATION"}}},
+            "Olá mundo",
+            ["Olá, mundo"],
+            "pontuacao",
+        ),
+        (
+            {"rule": {"category": {"id": "TYPOS"}}},
+            "Ola",
+            ["Olá"],
+            "acentuacao",
+        ),
+        (
+            {"rule": {}},
+            "caza",
+            ["casa"],
+            "outro",
+        ),
+        (
+            {
+                "rule": {
+                    "id": "PORTUGUESE_WORD_REPEAT_BEGINNING_RULE",
+                    "category": {"id": "STYLE"},
+                    "issueType": "style",
+                }
+            },
+            "Livre",
+            [],
+            "repeticao",
+        ),
+        (
+            {
+                "rule": {
+                    "id": "PT_WORDINESS_REPLACE_AINDA_ESTÁ",
+                    "category": {"id": "REDUNDANCY"},
+                    "issueType": "style",
+                }
+            },
+            "ainda está",
+            ["continua"],
+            "estilo",
+        ),
+    ],
+)
+def test_classifica_categorias(
+    item,
+    original,
+    sugestoes,
+    esperado,
+):
+    from app.corretor_texto import _classificar_categoria
+
+    assert _classificar_categoria(
+        item,
+        original,
+        sugestoes,
+    ) == esperado

@@ -76,6 +76,23 @@
             font-weight: bold;
         }
 
+        .categoria-corretor {
+            display: inline-block;
+            margin: 4px 0 8px;
+            padding: 4px 9px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .categoria-ortografia { background: #fee2e2; color: #991b1b; }
+        .categoria-gramatica { background: #dbeafe; color: #1e40af; }
+        .categoria-pontuacao { background: #fef3c7; color: #92400e; }
+        .categoria-acentuacao { background: #dcfce7; color: #166534; }
+        .categoria-estilo { background: #f3e8ff; color: #6b21a8; }
+        .categoria-repeticao { background: #ffedd5; color: #9a3412; }
+        .categoria-outro { background: #e2e8f0; color: #334155; }
+
         @media (max-width: 600px) {
             body { padding: 12px; }
         }
@@ -244,6 +261,27 @@
 
                 for (const item of dados.sugestoes) {
                     const entrada = document.createElement("li");
+
+                    const nomesCategorias = {
+                        ortografia: "Ortografia",
+                        gramatica: "Gramática",
+                        pontuacao: "Pontuação",
+                        acentuacao: "Acentuação",
+                        estilo: "Estilo",
+                        repeticao: "Repetição",
+                        outro: "Outro"
+                    };
+
+                    const categoria = nomesCategorias[item.categoria]
+                        ? item.categoria
+                        : "outro";
+
+                    const rotuloCategoria = document.createElement("span");
+                    rotuloCategoria.className =
+                        "categoria-corretor categoria-" + categoria;
+                    rotuloCategoria.textContent = nomesCategorias[categoria];
+                    entrada.appendChild(rotuloCategoria);
+
                     const trecho = document.createElement("p");
                     const explicacao = document.createElement("p");
 
