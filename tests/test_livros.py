@@ -307,3 +307,85 @@ def test_pagina_livros(cliente):
 
     assert resposta.status_code == 200
     assert b"Biblioteca de Livros" in resposta.data
+
+
+def test_corrigir_texto_com_sucesso(cliente, monkeypatch):
+    from app import livros
+    resultado_esperado = {
+        "texto_original": "Ola mundo",
+        "quantidade": 1,
+        "sugestoes": [
+            {
+                "mensagem": "Possível erro de acentuação.",
+                "trecho": "Ola",
+                "offset": 0,
+                "comprimento": 3,
+                "categoria": "acentuacao",
+                "sugestoes": ["Olá"],
+            }
+        ],
+    }
+    monkeypatch.setattr(
+        livros,
+        "corrigir_texto",
+        lambda texto: resultado_esperado,
+    )
+
+    resposta = cliente.post(
+        "/api/capitulos/corrigir-texto",
+        json={"texto": "Ola mundo"},
+    )
+
+    assert resposta.status_code == 200
+    assert resposta.get_json() == resultado_esperado
+
+
+def test_corrigir_texto_sem_texto(cliente):
+    resposta = cliente.post(
+        "/api/capitulos/corrigir-texto",
+        json={},
+    )
+
+    assert resposta.status_code == 400
+    assert resposta.get_json()["erro"] == (
+        "O conteúdo deve ser um texto."
+    )
+
+
+def test_corrigir_texto_com_json_invalido(cliente):
+    resposta = cliente.post(
+        "/api/capitulos/corrigir-texto",
+        data="json inválido",
+        content_type="application/json",
+    )
+
+    assert resposta.status_code == 400
+    assert resposta.get_json()["erro"] == (
+        "Envie um objeto JSON válido."
+    )
+
+
+def test_corrigir_texto_com_servico_indisponivel(
+    cliente,
+    monkeypatch,
+):
+    from app import livros
+
+    def servico_indisponivel(texto):
+        raise livros.ErroCorretor("Serviço indisponível.")
+
+    monkeypatch.setattr(
+        livros,
+        "corrigir_texto",
+        servico_indisponivel,
+    )
+
+    resposta = cliente.post(
+        "/api/capitulos/corrigir-texto",
+        json={"texto": "Texto para testar"},
+    )
+
+    assert resposta.status_code == 503
+    assert resposta.get_json()["erro"] == (
+        "Serviço indisponível."
+    )
