@@ -82,6 +82,8 @@ def exportar_pdf(livro_id, destino):
         "pandoc",
         "--from=markdown",
         "--pdf-engine=xelatex",
+        "--table-of-contents",
+        "--toc-depth=2",
         "--metadata",
         f"title={livro['titulo']}",
         "--metadata",

@@ -191,6 +191,8 @@ def test_exportar_pdf_com_sucesso(
     assert resultado == destino
     assert chamadas["comando"][0] == "pandoc"
     assert "--pdf-engine=xelatex" in chamadas["comando"]
+    assert "--table-of-contents" in chamadas["comando"]
+    assert "--toc-depth=2" in chamadas["comando"]
     assert chamadas["comando"][-1] == str(destino)
     assert "# Livro de teste" in chamadas["input"]
     assert chamadas["check"] is False
