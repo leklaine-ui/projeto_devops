@@ -1,4 +1,8 @@
 import pytest
+import sqlite3
+from io import BytesIO
+from pathlib import Path
+from PIL import Image
 
 from app import livros_db
 from app.servidor_web import app
@@ -10,6 +14,7 @@ def cliente(tmp_path, monkeypatch):
     monkeypatch.setattr(livros_db, "BANCO", str(banco_teste))
 
     livros_db.criar_tabelas_livros()
+    monkeypatch.setitem(app.config, "CAPAS_DIR", str(tmp_path / "capas"))
 
     app.config.update(TESTING=True)
 
@@ -389,3 +394,100 @@ def test_corrigir_texto_com_servico_indisponivel(
     assert resposta.get_json()["erro"] == (
         "Serviço indisponível."
     )
+
+def test_enviar_capa_png_valida(cliente, tmp_path):
+    livro = criar_livro(cliente).get_json()
+
+    imagem = Image.new("RGB", (20, 30), color="red")
+    arquivo = BytesIO()
+    imagem.save(arquivo, format="PNG")
+    arquivo.seek(0)
+
+    resposta = cliente.post(
+        f"/api/livros/{livro['id']}/capa",
+        data={"capa": (arquivo, "capa.png")},
+        content_type="multipart/form-data",
+    )
+
+    assert resposta.status_code == 200
+    dados = resposta.get_json()
+    assert dados["capa"].startswith("capas/")
+    assert dados["capa"].endswith(".png")
+    assert (tmp_path / dados["capa"]).is_file()
+
+    with livros_db.conectar_banco() as conexao:
+        livro_atualizado = conexao.execute(
+            "SELECT capa FROM livros WHERE id = ?",
+            (livro["id"],),
+        ).fetchone()
+
+    assert livro_atualizado["capa"] == dados["capa"]
+
+
+def test_enviar_capa_com_arquivo_invalido(cliente):
+    livro = criar_livro(cliente).get_json()
+
+    resposta = cliente.post(
+        f"/api/livros/{livro['id']}/capa",
+        data={"capa": (BytesIO(b"arquivo que nao e imagem"), "capa.png")},
+        content_type="multipart/form-data",
+    )
+
+    assert resposta.status_code == 400
+    assert "imagem válida" in resposta.get_json()["erro"]
+
+
+def test_enviar_capa_para_livro_inexistente(cliente):
+    resposta = cliente.post(
+        "/api/livros/999999/capa",
+        data={"capa": (BytesIO(b"conteudo"), "capa.png")},
+        content_type="multipart/form-data",
+    )
+
+    assert resposta.status_code == 404
+    assert resposta.get_json()["erro"] == "Livro não encontrado."
+
+
+def test_migrar_banco_antigo_com_preservacao_dos_livros(
+    tmp_path, monkeypatch
+):
+    banco_antigo = tmp_path / "livros_antigos.db"
+    monkeypatch.setattr(livros_db, "BANCO", str(banco_antigo))
+
+    with sqlite3.connect(banco_antigo) as conexao:
+        conexao.execute("""
+            CREATE TABLE livros (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                titulo TEXT NOT NULL,
+                autor TEXT NOT NULL DEFAULT '',
+                descricao TEXT NOT NULL DEFAULT '',
+                criado_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                atualizado_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conexao.execute("""
+            INSERT INTO livros (titulo, autor, descricao)
+            VALUES (?, ?, ?)
+        """, ("Livro antigo", "Autor antigo", "Descrição antiga"))
+
+    livros_db.criar_tabelas_livros()
+
+    with livros_db.conectar_banco() as conexao:
+        colunas = {
+            linha["name"]
+            for linha in conexao.execute(
+                "PRAGMA table_info(livros)"
+            ).fetchall()
+        }
+        livro = conexao.execute(
+            "SELECT * FROM livros WHERE id = 1"
+        ).fetchone()
+
+    assert {"introducao", "conclusao", "epilogo", "capa"} <= colunas
+    assert livro["titulo"] == "Livro antigo"
+    assert livro["autor"] == "Autor antigo"
+    assert livro["descricao"] == "Descrição antiga"
+    assert livro["introducao"] == ""
+    assert livro["conclusao"] == ""
+    assert livro["epilogo"] == ""
+    assert livro["capa"] == ""

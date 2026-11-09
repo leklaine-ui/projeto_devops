@@ -22,10 +22,27 @@ def criar_tabelas_livros():
                 titulo TEXT NOT NULL,
                 autor TEXT NOT NULL DEFAULT '',
                 descricao TEXT NOT NULL DEFAULT '',
+                introducao TEXT NOT NULL DEFAULT '',
+                conclusao TEXT NOT NULL DEFAULT '',
+                epilogo TEXT NOT NULL DEFAULT '',
                 criado_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 atualizado_em TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
         """)
+
+        colunas = {
+            linha["name"]
+            for linha in conexao.execute(
+                "PRAGMA table_info(livros)"
+            ).fetchall()
+        }
+
+        for coluna in ("introducao", "conclusao", "epilogo", "capa"):
+            if coluna not in colunas:
+                conexao.execute(
+                    f"ALTER TABLE livros ADD COLUMN "
+                    f"{coluna} TEXT NOT NULL DEFAULT ''"
+                )
 
         conexao.execute("""
             CREATE TABLE IF NOT EXISTS capitulos (

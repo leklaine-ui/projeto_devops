@@ -1,4 +1,9 @@
-from flask import Blueprint, jsonify, request
+import os
+import uuid
+from io import BytesIO
+
+from flask import Blueprint, current_app, jsonify, request
+from PIL import Image, UnidentifiedImageError
 
 from app.livros_db import conectar_banco, criar_tabelas_livros
 
@@ -13,7 +18,9 @@ criar_tabelas_livros()
 def listar_livros():
     with conectar_banco() as conexao:
         livros = conexao.execute("""
-            SELECT id, titulo, autor, descricao, criado_em, atualizado_em
+            SELECT id, titulo, autor, descricao,
+                   introducao, conclusao, epilogo, capa,
+                   criado_em, atualizado_em
             FROM livros
             ORDER BY atualizado_em DESC, id DESC
         """).fetchall()
@@ -28,6 +35,17 @@ def criar_livro():
     autor = dados.get("autor", "").strip()
     descricao = dados.get("descricao", "").strip()
 
+    introducao = dados.get("introducao", "")
+    conclusao = dados.get("conclusao", "")
+    epilogo = dados.get("epilogo", "")
+
+    if not all(isinstance(campo, str) for campo in (
+        introducao, conclusao, epilogo
+    )):
+        return jsonify({
+            "erro": "Introdução, conclusão e epílogo devem ser textos."
+        }), 400
+
     if not titulo:
         return jsonify({
             "erro": "O título do livro é obrigatório."
@@ -35,13 +53,21 @@ def criar_livro():
 
     with conectar_banco() as conexao:
         cursor = conexao.execute("""
-            INSERT INTO livros (titulo, autor, descricao)
-            VALUES (?, ?, ?)
-        """, (titulo, autor, descricao))
+            INSERT INTO livros (
+                titulo, autor, descricao,
+                introducao, conclusao, epilogo
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            titulo, autor, descricao,
+            introducao, conclusao, epilogo
+        ))
 
         livro_id = cursor.lastrowid
         livro = conexao.execute("""
-            SELECT id, titulo, autor, descricao, criado_em, atualizado_em
+            SELECT id, titulo, autor, descricao,
+                   introducao, conclusao, epilogo, capa,
+                   criado_em, atualizado_em
             FROM livros
             WHERE id = ?
         """, (livro_id,)).fetchone()
@@ -53,7 +79,9 @@ def criar_livro():
 def obter_livro(livro_id):
     with conectar_banco() as conexao:
         livro = conexao.execute("""
-            SELECT id, titulo, autor, descricao, criado_em, atualizado_em
+            SELECT id, titulo, autor, descricao,
+                   introducao, conclusao, epilogo, capa,
+                   criado_em, atualizado_em
             FROM livros
             WHERE id = ?
         """, (livro_id,)).fetchone()
@@ -197,23 +225,32 @@ def atualizar_livro(livro_id):
         titulo = dados.get("titulo", livro["titulo"])
         autor = dados.get("autor", livro["autor"])
         descricao = dados.get("descricao", livro["descricao"])
+        introducao = dados.get("introducao", livro["introducao"])
+        conclusao = dados.get("conclusao", livro["conclusao"])
+        epilogo = dados.get("epilogo", livro["epilogo"])
 
         if not isinstance(titulo, str) or not titulo.strip():
             return jsonify({
                 "erro": "O título do livro é obrigatório."
             }), 400
 
-        if not isinstance(autor, str) or not isinstance(descricao, str):
+        if not all(isinstance(campo, str) for campo in (
+            autor, descricao, introducao, conclusao, epilogo
+        )):
             return jsonify({
-                "erro": "Autor e descrição devem ser textos."
+                "erro": "Os campos do livro devem ser textos."
             }), 400
 
         conexao.execute("""
             UPDATE livros
             SET titulo = ?, autor = ?, descricao = ?,
+                introducao = ?, conclusao = ?, epilogo = ?,
                 atualizado_em = CURRENT_TIMESTAMP
             WHERE id = ?
-        """, (titulo.strip(), autor.strip(), descricao.strip(), livro_id))
+        """, (
+            titulo.strip(), autor.strip(), descricao.strip(),
+            introducao, conclusao, epilogo, livro_id
+        ))
 
         atualizado = conexao.execute(
             "SELECT * FROM livros WHERE id = ?",
@@ -249,3 +286,107 @@ def corrigir_texto_capitulo():
         return jsonify({"erro": str(erro)}), 503
 
     return jsonify(resultado), 200
+
+@livros_bp.route(
+    "/api/livros/<int:livro_id>/capa",
+    methods=["POST"],
+)
+def enviar_capa_livro(livro_id):
+    arquivo = request.files.get("capa")
+
+    if arquivo is None or not arquivo.filename:
+        return jsonify({"erro": "Envie uma imagem de capa."}), 400
+
+    tamanho_maximo = 5 * 1024 * 1024
+    conteudo = arquivo.stream.read(tamanho_maximo + 1)
+
+    if not conteudo:
+        return jsonify({"erro": "O arquivo está vazio."}), 400
+
+    if len(conteudo) > tamanho_maximo:
+        return jsonify({
+            "erro": "A imagem deve ter no máximo 5 MB."
+        }), 400
+
+    with conectar_banco() as conexao:
+        livro = conexao.execute(
+            "SELECT id FROM livros WHERE id = ?",
+            (livro_id,),
+        ).fetchone()
+
+        if livro is None:
+            return jsonify({"erro": "Livro não encontrado."}), 404
+
+    try:
+        imagem = Image.open(BytesIO(conteudo))
+        formato = imagem.format
+        imagem.verify()
+
+        formatos_permitidos = {
+            "JPEG": ("jpg", "JPEG"),
+            "PNG": ("png", "PNG"),
+            "WEBP": ("webp", "WEBP"),
+        }
+
+        if formato not in formatos_permitidos:
+            return jsonify({
+                "erro": "Formato inválido. Use JPEG, PNG ou WEBP."
+            }), 400
+
+        imagem = Image.open(BytesIO(conteudo))
+
+        if imagem.width > 12000 or imagem.height > 12000:
+            return jsonify({
+                "erro": "As dimensões da imagem são muito grandes."
+            }), 400
+
+        if imagem.width * imagem.height > 40000000:
+            return jsonify({
+                "erro": "A resolução da imagem é muito grande."
+            }), 400
+
+        extensao, formato_saida = formatos_permitidos[formato]
+
+        if formato_saida == "JPEG":
+            imagem = imagem.convert("RGB")
+
+        nome_arquivo = f"{uuid.uuid4().hex}.{extensao}"
+        caminho_relativo = f"capas/{nome_arquivo}"
+
+        pasta_capas = current_app.config.get("CAPAS_DIR")
+        if not pasta_capas:
+            pasta_capas = os.path.join(
+                current_app.static_folder,
+                "capas",
+            )
+
+        os.makedirs(pasta_capas, exist_ok=True)
+        caminho_completo = os.path.join(
+            pasta_capas,
+            nome_arquivo,
+        )
+
+        imagem.save(caminho_completo, format=formato_saida)
+
+    except (
+        UnidentifiedImageError,
+        OSError,
+        ValueError,
+        Image.DecompressionBombError,
+    ):
+        return jsonify({"erro": "O arquivo enviado não é uma imagem válida."}), 400
+
+    with conectar_banco() as conexao:
+        conexao.execute(
+            """
+            UPDATE livros
+            SET capa = ?, atualizado_em = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (caminho_relativo, livro_id),
+        )
+
+    return jsonify({
+        "mensagem": "Capa enviada com sucesso.",
+        "capa": caminho_relativo,
+    }), 200

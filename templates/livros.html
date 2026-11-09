@@ -31,6 +31,16 @@
             box-shadow: 0 2px 8px #0000000d;
         }
 
+        .capa-lista {
+            display: block;
+            width: 150px;
+            height: 210px;
+            object-fit: contain;
+            object-position: left center;
+            border-radius: 8px;
+            margin-bottom: 14px;
+        }
+
         label {
             display: block;
             margin-top: 12px;
@@ -119,6 +129,42 @@
             <label for="descricao">Descrição</label>
             <textarea id="descricao"></textarea>
 
+            <label for="introducao">Introdução</label>
+            <textarea id="introducao" rows="8"></textarea>
+
+            <label for="conclusao">Conclusão</label>
+            <textarea id="conclusao" rows="8"></textarea>
+
+            <label for="epilogo">Epílogo</label>
+            <textarea id="epilogo" rows="8"></textarea>
+
+            <section class="painel" id="painel-capa">
+                <h3>Capa do livro</h3>
+                <p>Selecione uma imagem JPEG, PNG ou WEBP de até 5 MB.</p>
+
+                <input
+                    type="file"
+                    id="arquivo-capa"
+                    accept="image/jpeg,image/png,image/webp"
+                >
+
+                <div id="previa-capa" hidden>
+                    <img
+                        id="imagem-previa-capa"
+                        alt="Prévia da capa do livro"
+                        style="max-width: 220px; width: 100%; height: auto;"
+                    >
+                    <h4 id="titulo-previa-capa"></h4>
+                    <p id="autor-previa-capa"></p>
+                </div>
+
+                <button type="button" id="botao-enviar-capa">
+                    Enviar capa
+                </button>
+
+                <p id="mensagem-capa" class="mensagem" role="status"></p>
+            </section>
+
             <button type="submit" id="botao-salvar">Cadastrar livro</button>
             <button type="button" class="secundario"
                     id="botao-cancelar" hidden>
@@ -186,6 +232,18 @@
     const campoTitulo = document.getElementById("titulo");
     const campoAutor = document.getElementById("autor");
     const campoDescricao = document.getElementById("descricao");
+    const campoIntroducao = document.getElementById("introducao");
+    const campoConclusao = document.getElementById("conclusao");
+    const campoEpilogo = document.getElementById("epilogo");
+    const arquivoCapa = document.getElementById("arquivo-capa");
+    const previaCapa = document.getElementById("previa-capa");
+    const imagemPreviaCapa = document.getElementById("imagem-previa-capa");
+    const tituloPreviaCapa = document.getElementById("titulo-previa-capa");
+    const autorPreviaCapa = document.getElementById("autor-previa-capa");
+    const botaoEnviarCapa = document.getElementById("botao-enviar-capa");
+    const mensagemCapa = document.getElementById("mensagem-capa");
+    let urlPreviaCapa = null;
+
     const mensagem = document.getElementById("mensagem");
     const lista = document.getElementById("lista-livros");
     const botaoSalvar = document.getElementById("botao-salvar");
@@ -453,9 +511,81 @@
         mensagem.textContent = texto;
     }
 
+    function atualizarPreviaCapa(url, titulo, autor) {
+        if (urlPreviaCapa) {
+            URL.revokeObjectURL(urlPreviaCapa);
+            urlPreviaCapa = null;
+        }
+
+        if (url.startsWith("blob:")) {
+            urlPreviaCapa = url;
+        }
+
+        imagemPreviaCapa.src = url;
+        tituloPreviaCapa.textContent = titulo || "";
+        autorPreviaCapa.textContent =
+            "Autor: " + (autor || "Não informado");
+        previaCapa.hidden = false;
+    }
+
+    function limparPreviaCapa() {
+        if (urlPreviaCapa) {
+            URL.revokeObjectURL(urlPreviaCapa);
+            urlPreviaCapa = null;
+        }
+
+        imagemPreviaCapa.removeAttribute("src");
+        tituloPreviaCapa.textContent = "";
+        autorPreviaCapa.textContent = "";
+        previaCapa.hidden = true;
+        arquivoCapa.value = "";
+        mensagemCapa.textContent = "";
+    }
+
+    arquivoCapa.addEventListener("change", () => {
+        const arquivo = arquivoCapa.files[0];
+
+        if (!arquivo) {
+            limparPreviaCapa();
+            return;
+        }
+
+        const tiposPermitidos = [
+            "image/jpeg",
+            "image/png",
+            "image/webp"
+        ];
+
+        if (!tiposPermitidos.includes(arquivo.type)) {
+            limparPreviaCapa();
+            mensagemCapa.textContent =
+                "Formato inválido. Selecione JPEG, PNG ou WEBP.";
+            return;
+        }
+
+        if (arquivo.size > 5 * 1024 * 1024) {
+            limparPreviaCapa();
+            mensagemCapa.textContent =
+                "A imagem deve ter no máximo 5 MB.";
+            return;
+        }
+
+        const url = URL.createObjectURL(arquivo);
+
+        atualizarPreviaCapa(
+            url,
+            campoTitulo.value,
+            campoAutor.value
+        );
+
+        mensagemCapa.textContent =
+            "Prévia pronta. Salve o livro e depois envie a capa.";
+    });
+
     function cancelarEdicao() {
         formulario.reset();
         campoId.value = "";
+        limparPreviaCapa();
         document.getElementById("titulo-formulario").textContent =
             "Cadastrar livro";
         botaoSalvar.textContent = "Cadastrar livro";
@@ -565,6 +695,14 @@
                 const cartao = document.createElement("article");
                 cartao.className = "livro";
 
+                if (livro.capa) {
+                    const capa = document.createElement("img");
+                    capa.src = "/static/" + livro.capa;
+                    capa.alt = "Capa do livro " + livro.titulo;
+                    capa.className = "capa-lista";
+                    cartao.appendChild(capa);
+                }
+
                 const titulo = document.createElement("h3");
                 titulo.textContent = livro.titulo;
 
@@ -581,6 +719,19 @@
                     campoTitulo.value = livro.titulo;
                     campoAutor.value = livro.autor || "";
                     campoDescricao.value = livro.descricao || "";
+                    campoIntroducao.value = livro.introducao || "";
+                    campoConclusao.value = livro.conclusao || "";
+                    campoEpilogo.value = livro.epilogo || "";
+                    if (livro.capa) {
+                        atualizarPreviaCapa(
+                            "/static/" + livro.capa,
+                            livro.titulo,
+                            livro.autor
+                        );
+                    } else {
+                        limparPreviaCapa();
+                    }
+
 
                     document.getElementById("titulo-formulario")
                         .textContent = "Editar livro";
@@ -703,14 +854,67 @@
             limparFormularioCapitulo();
         });
 
+    async function enviarCapaLivro(livroId) {
+        const arquivo = arquivoCapa.files[0];
+
+        if (!arquivo) {
+            return true;
+        }
+
+        const dadosCapa = new FormData();
+        dadosCapa.append("capa", arquivo);
+
+        mensagemCapa.textContent = "Enviando capa...";
+
+        const resposta = await fetch(
+            `/api/livros/${livroId}/capa`,
+            {
+                method: "POST",
+                body: dadosCapa
+            }
+        );
+
+        const resultado = await resposta.json();
+
+        if (!resposta.ok) {
+            throw new Error(
+                resultado.erro || "Não foi possível enviar a capa."
+            );
+        }
+
+        atualizarPreviaCapa(
+            "/static/" + resultado.capa,
+            campoTitulo.value,
+            campoAutor.value
+        );
+
+        arquivoCapa.value = "";
+        mensagemCapa.textContent = "Capa enviada com sucesso.";
+
+        return true;
+    }
+
+    botaoEnviarCapa.addEventListener("click", () => {
+        if (!arquivoCapa.files.length) {
+            mensagemCapa.textContent = "Selecione uma imagem primeiro.";
+            return;
+        }
+
+        formulario.requestSubmit();
+    });
+
     formulario.addEventListener("submit", async evento => {
         evento.preventDefault();
 
         const id = campoId.value;
+
         const dados = {
             titulo: campoTitulo.value.trim(),
             autor: campoAutor.value.trim(),
-            descricao: campoDescricao.value.trim()
+            descricao: campoDescricao.value.trim(),
+            introducao: campoIntroducao.value,
+            conclusao: campoConclusao.value,
+            epilogo: campoEpilogo.value
         };
 
         if (!dados.titulo) {
@@ -719,6 +923,9 @@
         }
 
         botaoSalvar.disabled = true;
+        botaoEnviarCapa.disabled = true;
+
+        let livroSalvo = false;
 
         try {
             const resposta = await fetch(
@@ -733,16 +940,36 @@
             const resultado = await resposta.json();
 
             if (!resposta.ok) {
-                throw new Error(resultado.erro || "Não foi possível salvar.");
+                throw new Error(
+                    resultado.erro || "Não foi possível salvar."
+                );
+            }
+
+            livroSalvo = true;
+            campoId.value = resultado.id;
+
+            if (arquivoCapa.files.length > 0) {
+                await enviarCapaLivro(resultado.id);
             }
 
             cancelarEdicao();
-            mostrarMensagem(id ? "Livro atualizado!" : "Livro cadastrado!");
+
+            mostrarMensagem(
+                id ? "Livro atualizado!" : "Livro cadastrado!"
+            );
+
             await carregarLivros();
+
         } catch (erro) {
-            mostrarMensagem(erro.message);
+            mostrarMensagem(
+                livroSalvo
+                    ? "Livro salvo, mas houve um problema com a capa: "
+                        + erro.message
+                    : erro.message
+            );
         } finally {
             botaoSalvar.disabled = false;
+            botaoEnviarCapa.disabled = false;
         }
     });
 
