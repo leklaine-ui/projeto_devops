@@ -108,6 +108,7 @@ def exportar_pdf(livro_id, destino):
         "--from=markdown",
         "--pdf-engine=xelatex",
         "--table-of-contents",
+        "--metadata=toc-title=Sumário",
         "--toc-depth=2",
         "--metadata",
         f"title={livro['titulo']}",
@@ -218,7 +219,7 @@ def exportar_epub(livro_id, destino):
         '<html xmlns="http://www.w3.org/1999/xhtml" '
         'xmlns:epub="http://www.idpf.org/2007/ops" lang="pt-BR">'
         "<head><title>Índice</title></head><body>"
-        '<nav epub:type="toc" id="toc"><h1>Índice</h1><ol>'
+        '<nav epub:type="toc" id="toc"><h1>Sumário</h1><ol>'
         + "".join(itens_indice)
         + "</ol></nav></body></html>"
     )

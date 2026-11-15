@@ -192,6 +192,7 @@ def test_exportar_pdf_com_sucesso(
     assert chamadas["comando"][0] == "pandoc"
     assert "--pdf-engine=xelatex" in chamadas["comando"]
     assert "--table-of-contents" in chamadas["comando"]
+    assert "--metadata=toc-title=Sumário" in chamadas["comando"]
     assert "--toc-depth=2" in chamadas["comando"]
     assert chamadas["comando"][-1] == str(destino)
     assert "# Livro de teste" in chamadas["input"]
@@ -233,6 +234,7 @@ def test_exportar_epub_cria_arquivo_valido(banco_teste, tmp_path):
         assert pacote.tag.endswith("package")
         assert conteudo.tag.endswith("html")
         assert navegacao.tag.endswith("html")
+        assert "Sumário" in arquivo.read("OEBPS/nav.xhtml").decode("utf-8")
 
         texto = arquivo.read("OEBPS/content.xhtml").decode("utf-8")
         assert "Livro de teste" in texto
