@@ -9,7 +9,8 @@ def obter_livro(livro_id):
     with conectar_banco() as conexao:
         livro = conexao.execute(
             """
-            SELECT id, titulo, autor, descricao
+            SELECT id, titulo, autor, descricao,
+                   introducao, conclusao, epilogo, capa
             FROM livros
             WHERE id = ?
             """,
@@ -35,20 +36,44 @@ def obter_livro(livro_id):
 
 
 def gerar_markdown(livro):
-    """Converte os dados de um livro em Markdown."""
+    """Converte os dados completos de um livro em Markdown."""
     linhas = [f"# {livro['titulo']}", ""]
 
-    if livro["autor"]:
+    if livro.get("autor"):
         linhas.extend([f"**Autor:** {livro['autor']}", ""])
 
-    if livro["descricao"]:
+    if livro.get("descricao"):
         linhas.extend([livro["descricao"], ""])
+
+    if livro.get("introducao"):
+        linhas.extend([
+            "## Introdução",
+            "",
+            livro["introducao"].strip(),
+            "",
+        ])
 
     for capitulo in livro["capitulos"]:
         linhas.extend([
             f"## {capitulo['titulo']}",
             "",
-            capitulo["conteudo"].strip(),
+            (capitulo["conteudo"] or "").strip(),
+            "",
+        ])
+
+    if livro.get("conclusao"):
+        linhas.extend([
+            "## Conclusão",
+            "",
+            livro["conclusao"].strip(),
+            "",
+        ])
+
+    if livro.get("epilogo"):
+        linhas.extend([
+            "## Epílogo",
+            "",
+            livro["epilogo"].strip(),
             "",
         ])
 
@@ -113,8 +138,9 @@ def exportar_pdf(livro_id, destino):
 
 
 def exportar_epub(livro_id, destino):
-    """Exporta um livro para EPUB 3 usando apenas a biblioteca padrão."""
+    """Exporta um livro completo para EPUB 3, incluindo sua capa."""
     import html
+    import mimetypes
     import re
     import uuid
     import zipfile
@@ -128,38 +154,51 @@ def exportar_epub(livro_id, destino):
     caminho.parent.mkdir(parents=True, exist_ok=True)
 
     escapar = html.escape
-    titulo = escapar(livro["titulo"] or "Livro sem título")
-    autor = escapar(livro["autor"] or "")
-    descricao = escapar(livro["descricao"] or "")
+    titulo = escapar(livro.get("titulo") or "Livro sem título")
+    autor = escapar(livro.get("autor") or "")
+    descricao = escapar(livro.get("descricao") or "")
     identificador = f"urn:uuid:{uuid.uuid4()}"
     modificacao = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     secoes = []
     itens_indice = []
 
-    for indice, capitulo in enumerate(livro["capitulos"], start=1):
-        id_capitulo = f"capitulo-{indice}"
-        titulo_capitulo = escapar(
-            capitulo["titulo"] or f"Capítulo {indice}"
-        )
-        conteudo = (capitulo["conteudo"] or "").strip()
-        paragrafos = re.split(r"\n\s*\n", conteudo) if conteudo else []
+    def adicionar_secao(id_secao, nome, conteudo):
+        if not conteudo:
+            return
+
+        paragrafos = re.split(r"\n\s*\n", conteudo.strip())
         texto_html = "".join(
             "<p>" + escapar(paragrafo).replace("\n", "<br />") + "</p>"
             for paragrafo in paragrafos
+            if paragrafo.strip()
         )
 
+        nome_html = escapar(nome)
         secoes.append(
-            f'<section id="{id_capitulo}">'
-            f"<h2>{titulo_capitulo}</h2>{texto_html}</section>"
+            f'<section id="{id_secao}">'
+            f"<h2>{nome_html}</h2>{texto_html}</section>"
         )
         itens_indice.append(
-            f'<li><a href="content.xhtml#{id_capitulo}">'
-            f"{titulo_capitulo}</a></li>"
+            f'<li><a href="content.xhtml#{id_secao}">'
+            f"{nome_html}</a></li>"
         )
 
-    descricao_html = f"<p>{descricao}</p>" if descricao else ""
+    adicionar_secao("introducao", "Introdução", livro.get("introducao", ""))
+
+    for indice, capitulo in enumerate(livro["capitulos"], start=1):
+        nome = capitulo.get("titulo") or f"Capítulo {indice}"
+        adicionar_secao(
+            f"capitulo-{indice}",
+            nome,
+            capitulo.get("conteudo") or "",
+        )
+
+    adicionar_secao("conclusao", "Conclusão", livro.get("conclusao", ""))
+    adicionar_secao("epilogo", "Epílogo", livro.get("epilogo", ""))
+
     autor_html = f"<p>{autor}</p>" if autor else ""
+    descricao_html = f"<p>{descricao}</p>" if descricao else ""
 
     conteudo_xhtml = (
         '<?xml version="1.0" encoding="utf-8"?>'
@@ -184,15 +223,83 @@ def exportar_epub(livro_id, destino):
         + "</ol></nav></body></html>"
     )
 
-    metadados_autor = f"<dc:creator>{autor}</dc:creator>" if autor else ""
+    arquivos_epub = {}
+    itens_manifesto = [
+        '<item id="content" href="content.xhtml" '
+        'media-type="application/xhtml+xml"/>',
+        '<item id="nav" href="nav.xhtml" '
+        'media-type="application/xhtml+xml" properties="nav"/>',
+    ]
+    itens_spine = []
+
+    capa = (livro.get("capa") or "").strip()
+    if capa:
+        caminho_relativo = Path(capa)
+
+        if caminho_relativo.is_absolute() or ".." in caminho_relativo.parts:
+            raise ValueError("O caminho da capa é inválido.")
+
+        pasta_static = Path(__file__).resolve().parent.parent / "static"
+        arquivo_capa = (pasta_static / caminho_relativo).resolve()
+
+        try:
+            arquivo_capa.relative_to(pasta_static.resolve())
+        except ValueError as erro:
+            raise ValueError("O caminho da capa é inválido.") from erro
+
+        if not arquivo_capa.is_file():
+            raise FileNotFoundError(
+                f"Imagem da capa não encontrada: {capa}"
+            )
+
+        tipo_mime, _ = mimetypes.guess_type(str(arquivo_capa))
+        if tipo_mime not in ("image/jpeg", "image/png", "image/webp"):
+            raise ValueError("Formato de imagem da capa não suportado.")
+
+        nome_imagem = arquivo_capa.name
+        caminho_imagem_epub = f"images/{nome_imagem}"
+        id_imagem = "cover-image"
+
+        arquivos_epub[f"OEBPS/{caminho_imagem_epub}"] = arquivo_capa.read_bytes()
+
+        itens_manifesto.append(
+            f'<item id="{id_imagem}" href="{caminho_imagem_epub}" '
+            f'media-type="{tipo_mime}" properties="cover-image"/>'
+        )
+
+        pagina_capa = (
+            '<?xml version="1.0" encoding="utf-8"?>'
+            '<html xmlns="http://www.w3.org/1999/xhtml" lang="pt-BR">'
+            "<head><title>Capa</title>"
+            "<style>body{margin:0;text-align:center;}"
+            "img{max-width:100%;max-height:100vh;}</style>"
+            "</head><body>"
+            f'<img src="{caminho_imagem_epub}" alt="Capa de {titulo}"/>'
+            "</body></html>"
+        )
+
+        arquivos_epub["OEBPS/cover.xhtml"] = pagina_capa
+        itens_manifesto.append(
+            '<item id="cover-page" href="cover.xhtml" '
+            'media-type="application/xhtml+xml"/>'
+        )
+        itens_spine.append('<itemref idref="cover-page"/>')
+
+    itens_spine.append('<itemref idref="content"/>')
+
+    metadados_autor = (
+        f"<dc:creator>{autor}</dc:creator>" if autor else ""
+    )
     metadados_descricao = (
-        f"<dc:description>{descricao}</dc:description>" if descricao else ""
+        f"<dc:description>{descricao}</dc:description>"
+        if descricao else ""
     )
 
     pacote_opf = (
         '<?xml version="1.0" encoding="utf-8"?>'
         '<package xmlns="http://www.idpf.org/2007/opf" '
         'xmlns:dc="http://purl.org/dc/elements/1.1/" '
+        'xmlns:dcterms="http://purl.org/dc/terms/" '
         'version="3.0" unique-identifier="book-id" xml:lang="pt-BR">'
         "<metadata>"
         f'<dc:identifier id="book-id">{identificador}</dc:identifier>'
@@ -201,14 +308,11 @@ def exportar_epub(livro_id, destino):
         f"{metadados_autor}{metadados_descricao}"
         f'<meta property="dcterms:modified">{modificacao}</meta>'
         "</metadata>"
-        '<manifest>'
-        '<item id="content" href="content.xhtml" '
-        'media-type="application/xhtml+xml"/>'
-        '<item id="nav" href="nav.xhtml" '
-        'media-type="application/xhtml+xml" properties="nav"/>'
-        "</manifest>"
-        '<spine><itemref idref="content"/></spine>'
-        "</package>"
+        "<manifest>"
+        + "".join(itens_manifesto)
+        + "</manifest><spine>"
+        + "".join(itens_spine)
+        + "</spine></package>"
     )
 
     container_xml = (
@@ -220,15 +324,18 @@ def exportar_epub(livro_id, destino):
         "</rootfiles></container>"
     )
 
-    with zipfile.ZipFile(caminho, "w") as arquivo:
-        arquivo.writestr(
+    with zipfile.ZipFile(caminho, "w") as arquivo_epub:
+        arquivo_epub.writestr(
             "mimetype",
             "application/epub+zip",
             compress_type=zipfile.ZIP_STORED,
         )
-        arquivo.writestr("META-INF/container.xml", container_xml)
-        arquivo.writestr("OEBPS/content.opf", pacote_opf)
-        arquivo.writestr("OEBPS/content.xhtml", conteudo_xhtml)
-        arquivo.writestr("OEBPS/nav.xhtml", navegacao_xhtml)
+        arquivo_epub.writestr("META-INF/container.xml", container_xml)
+        arquivo_epub.writestr("OEBPS/content.opf", pacote_opf)
+        arquivo_epub.writestr("OEBPS/content.xhtml", conteudo_xhtml)
+        arquivo_epub.writestr("OEBPS/nav.xhtml", navegacao_xhtml)
+
+        for nome, conteudo in arquivos_epub.items():
+            arquivo_epub.writestr(nome, conteudo)
 
     return caminho
